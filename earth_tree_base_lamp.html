@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CR-10 SE Earth & Tree Lamp Studio (Real NASA & 50m Cartographic Edition)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Load TopoJSON Client & Full D3 v7 Bundle (prevents standalone d3-geo t.Adder error) -->
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #070b14; color: #f8fafc; overflow: hidden; }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    input[type="range"] {
+      accent-color: #38bdf8;
+      height: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body class="flex flex-col md:flex-row h-screen w-screen">
+
+  <!-- Left Control Sidebar -->
+  <aside class="w-full md:w-[430px] bg-slate-900 border-r border-slate-800 flex flex-col h-[50vh] md:h-full z-10 shrink-0">
+    <!-- Header -->
+    <div class="p-3.5 border-b border-slate-800 bg-slate-950/80">
+      <div class="flex items-center justify-between">
+        <h1 class="text-base font-bold text-sky-400 tracking-tight">Earth & Tree Lithophane Studio</h1>
+        <span id="cartoStatusBadge" class="text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+          Loading Real World Data...
+        </span>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-0.5">Creality CR-10 SE (220×220×265 mm) • Real NASA DEM + 50m Vector</p>
+    </div>
+
+    <!-- Scrollable Controls -->
+    <div class="p-3.5 overflow-y-auto flex-1 space-y-4">
+
+      <!-- Live 2D Topographic Elevation Map Inspector -->
+      <div class="bg-slate-950/90 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+        <div class="flex items-center justify-between text-[11px]">
+          <span class="font-bold uppercase tracking-wider text-sky-400">2048×1024 Real-World DEM Inspector</span>
+          <button id="regenMapBtn" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded border border-slate-700 transition">
+            Reload NASA + 50m Map
+          </button>
+        </div>
+        <canvas id="topoPreviewCanvas" width="400" height="200" class="w-full h-32 rounded-lg border border-slate-800 bg-slate-950 object-cover"></canvas>
+        <div id="mapSourceStatus" class="text-[10px] text-emerald-400 font-medium truncate">
+          Initializing 2048×1024 Cartographic & NASA Topography Engine...
+        </div>
+        <div class="flex justify-between text-[10px] text-slate-400">
+          <span>■ Deep Ocean (Thin/Bright)</span>
+          <span>■ 50m Coastline Cliff</span>
+          <span>■ NASA Mountain Peaks (Thick)</span>
+        </div>
+      </div>
+
+      <!-- View & Optical Simulation Controls -->
+      <div class="space-y-2 bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1">
+          View & Optical Backlight Simulation
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-300 mb-1">Viewport Mode</label>
+            <select id="viewMode" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-400">
+              <option value="assembled">Assembled Lamp</option>
+              <option value="earthOnly">Earth Shade Only</option>
+              <option value="xray">X-Ray Side-Wire View</option>
+              <option value="exploded">Exploded Socket View</option>
+              <option value="treeOnly">Tree Base Only</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-300 mb-1">Lithophane Polarity</label>
+            <select id="polarityMode" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-400">
+              <option value="classic" selected>1. Classic Relief (Bright Ocean / Dark Land)</option>
+              <option value="dual">2. Dual-Surface (Outer Emboss + Inner Carve)</option>
+              <option value="inverted">3. Inverted Litho (Glowing Land / Thick Ocean)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <label for="bulbToggle" class="text-xs text-amber-300 font-medium cursor-pointer flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow shadow-amber-400"></span>
+            Internal LED Bulb ON (Beer-Lambert Glow)
+          </label>
+          <input type="checkbox" id="bulbToggle" checked class="w-4 h-4 accent-amber-400 rounded cursor-pointer">
+        </div>
+
+        <div class="space-y-1 pt-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Bulb Brightness / PLA Translucency</span>
+            <span id="v-lux" class="text-amber-400 font-semibold">1.35x</span>
+          </div>
+          <input type="range" id="lux" min="0.5" max="2.5" step="0.05" value="1.35" class="w-full">
+        </div>
+      </div>
+
+      <!-- Section 1: Ultra-Detailed Embossed Earth Topography -->
+      <div class="space-y-2.5 bg-slate-950/70 p-3 rounded-xl border border-sky-500/30">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-sky-400 flex items-center justify-between">
+          <span>1. Embossed Earth Topography & Contrast</span>
+          <span class="text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded">High-Contrast</span>
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Earth Outer Diameter</span>
+            <span id="v-diam" class="text-sky-400 font-semibold">156 mm</span>
+          </div>
+          <input type="range" id="diam" min="100" max="204" step="2" value="156" class="w-full">
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Ocean Base Wall (Thin = Bright Glow)</span>
+            <span id="v-wall" class="text-sky-400 font-semibold">1.2 mm</span>
+          </div>
+          <input type="range" id="wall" min="0.8" max="2.4" step="0.1" value="1.2" class="w-full">
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Coastline Step Cliff (Sharp Continent Edge)</span>
+            <span id="v-cliff" class="text-amber-400 font-semibold">0.85 mm</span>
+          </div>
+          <input type="range" id="cliff" min="0.0" max="2.0" step="0.05" value="0.85" class="w-full">
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Mountain Range Emboss Relief (Andes/Himalayas)</span>
+            <span id="v-relief" class="text-sky-400 font-semibold">2.6 mm</span>
+          </div>
+          <input type="range" id="relief" min="1.0" max="4.5" step="0.1" value="2.6" class="w-full">
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Ocean Ridge & Trench Bathymetry</span>
+            <span id="v-bathy" class="text-sky-400 font-semibold">0.35 mm</span>
+          </div>
+          <input type="range" id="bathy" min="0.0" max="0.8" step="0.05" value="0.35" class="w-full">
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">STL Mesh Grid Resolution</span>
+            <span id="v-res" class="text-sky-400 font-semibold">320×160 (Ultra Detail)</span>
+          </div>
+          <input type="range" id="res" min="160" max="360" step="20" value="320" class="w-full">
+        </div>
+
+        <div class="pt-1">
+          <label class="block text-[11px] text-slate-300 mb-1">Upload Custom NASA Bump/Heightmap (Optional)</label>
+          <input type="file" id="heightmapInput" accept="image/*" class="w-full text-[11px] text-slate-300 bg-slate-900 border border-slate-700 rounded-lg p-1.5 cursor-pointer">
+        </div>
+      </div>
+
+      <!-- Section 2: Light Connector Hardware Preset -->
+      <div class="space-y-2.5 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center justify-between">
+          <span>2. Light Connector Hardware Preset</span>
+          <span id="socketBadge" class="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">Best Fit</span>
+        </div>
+
+        <select id="socketPreset" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400">
+          <option value="e12" selected>Option A: E12 Salt Lamp Snap-Clip Cord (29mm • 45mm Cup)</option>
+          <option value="e26">Option B: E26 Standard Threaded Ring Socket (42mm • 50mm Cup)</option>
+          <option value="usb">Option C: USB 5V LED Puck Light (60mm Recess • 12mm Deep)</option>
+        </select>
+
+        <div id="hardwareHelpBox" class="text-[11px] text-slate-300 bg-slate-900/90 border border-slate-800 p-2 rounded-lg leading-relaxed"></div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-300">Socket Hole Dia</span>
+              <span id="v-shole" class="text-sky-400 font-semibold">29 mm</span>
+            </div>
+            <input type="range" id="shole" min="20" max="68" step="0.5" value="29" class="w-full">
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-300">Socket Cup Depth</span>
+              <span id="v-sdepth" class="text-sky-400 font-semibold">45 mm</span>
+            </div>
+            <input type="range" id="sdepth" min="10" max="65" step="1" value="45" class="w-full">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Side Wire Entry & Tree Trunk Base -->
+      <div class="space-y-2.5 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-cyan-400">
+          3. Side-Wire Portal & Organic Tree Base
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-300">Wire Tunnel Width</span>
+              <span id="v-wslot" class="text-cyan-400 font-semibold">9.0 mm</span>
+            </div>
+            <input type="range" id="wslot" min="6" max="14" step="0.5" value="9.0" class="w-full">
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-300">Side Entry Height</span>
+              <span id="v-wheight" class="text-cyan-400 font-semibold">16 mm</span>
+            </div>
+            <input type="range" id="wheight" min="8" max="40" step="1" value="16" class="w-full">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-300">Trunk Height</span>
+              <span id="v-theight" class="text-sky-400 font-semibold">115 mm</span>
+            </div>
+            <input type="range" id="theight" min="80" max="175" step="5" value="115" class="w-full">
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-300">Cradle Branches</span>
+              <span id="v-branches" class="text-sky-400 font-semibold">5</span>
+            </div>
+            <input type="range" id="branches" min="3" max="8" step="1" value="5" class="w-full">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-300">Branch Twist</span>
+              <span id="v-twist" class="text-sky-400 font-semibold">40°</span>
+            </div>
+            <input type="range" id="twist" min="0" max="110" step="5" value="40" class="w-full">
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-300">Bark Gnarl Depth</span>
+              <span id="v-bark" class="text-sky-400 font-semibold">3.5 mm</span>
+            </div>
+            <input type="range" id="bark" min="0.5" max="6.0" step="0.5" value="3.5" class="w-full">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom STL Export Bar -->
+    <div class="p-3 border-t border-slate-800 bg-slate-950 space-y-2">
+      <button id="exportEarthBtn" class="w-full py-2.5 px-4 rounded-lg font-bold text-xs bg-sky-400 hover:bg-sky-300 text-slate-950 transition shadow-lg shadow-sky-500/10 flex items-center justify-center gap-2">
+        <span>⬇ Download High-Detail Earth Shade (.STL)</span>
+      </button>
+      <button id="exportTreeBtn" class="w-full py-2 px-4 rounded-lg font-bold text-xs bg-lime-400 hover:bg-lime-300 text-slate-950 transition shadow-lg shadow-lime-500/10 flex items-center justify-center gap-2">
+        <span>⬇ Download Side-Wire Tree Base (.STL)</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Right 3D Viewport -->
+  <main id="viewport" class="flex-1 relative h-[50vh] md:h-full">
+    <!-- Top-Left CR-10 SE Print & Lithophane Optical HUD -->
+    <div class="absolute top-3 left-3 bg-slate-950/90 backdrop-blur border border-slate-800 rounded-xl p-3 text-xs space-y-1 pointer-events-none max-w-xs sm:max-w-md shadow-xl">
+      <div class="font-bold text-sky-400 flex items-center justify-between gap-4">
+        <span>Creality CR-10 SE Check (220×220×265 mm)</span>
+        <span id="hud-tris" class="text-[10px] text-slate-400 font-mono"></span>
+      </div>
+      <div class="text-slate-300">Earth Print Size: <span id="hud-earth" class="font-semibold"></span></div>
+      <div class="text-slate-300">Lithophane Wall Range: <span id="hud-wallrange" class="text-amber-300 font-semibold"></span></div>
+      <div class="text-slate-300">Tree Base Print Size: <span id="hud-tree" class="font-semibold"></span></div>
+      <div class="text-slate-300">Side Wire Portal: <span id="hud-wire" class="text-cyan-300 font-semibold"></span></div>
+    </div>
+
+    <!-- Bottom-Right Quick View Controls -->
+    <div class="absolute bottom-4 right-4 flex flex-wrap gap-2">
+      <button id="quickLightBtn" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg transition">
+        Toggle Day / Night Glow
+      </button>
+      <button id="quickXrayBtn" class="bg-slate-900/90 hover:bg-slate-800 text-cyan-300 border border-cyan-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg transition">
+        Toggle X-Ray Wire View
+      </button>
+    </div>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+    import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+
+    // --- Hardware Connector Presets ---
+    const SOCKET_PRESETS = {
+      e12: {
+        holeDia: 29.0,
+        cupDepth: 45,
+        badge: 'Best Compact Fit',
+        bulbClearanceDia: 64,
+        desc: `<strong>E12 Candelabra Salt-Lamp Cord (29mm Snap-Clip)</strong><br>
+               Push wire loop into the <strong>side teardrop portal</strong>, pull out top cup, snap E12 socket clips into the 29mm bore, and install a 5W–7W Warm LED bulb.`
+      },
+      e26: {
+        holeDia: 42.0,
+        cupDepth: 50,
+        badge: 'Standard US Bulb',
+        bulbClearanceDia: 72,
+        desc: `<strong>E26 Threaded Phenolic Socket + Ring (42mm)</strong><br>
+               Route SPT-2 cord through the side hole up into the 50mm cup, wire to E26 terminals, and seat socket inside the top cup.`
+      },
+      usb: {
+        holeDia: 60.0,
+        cupDepth: 12,
+        badge: 'Zero Wiring',
+        bulbClearanceDia: 68,
+        desc: `<strong>USB 5V LED Puck Light (60mm Recess)</strong><br>
+               Set Wire Tunnel Width to <strong>11.5mm</strong> to thread the USB plug through the side hole, and seat the 60mm LED puck in the top cup.`
+      }
+    };
+
+    // --- Real-World Tectonic Mountain Chains & Cordilleras (Geodesic Polyline Boosters) ---
+    // Ensures major real-world mountain chains have dramatic, unmistakable 3D tactile relief even on thin nozzles
+    const REAL_MOUNTAIN_CHAINS = [
+      // Himalayas, Karakoram, Hindu Kush & Tibetan Plateau
+      { pts: [[36, 71], [35, 76], [32, 79], [29, 84], [28, 88], [28, 95]], width: 4.2, height: 1.00 },
+      { pts: [[34, 80], [34, 88], [33, 95], [31, 100]], width: 7.5, height: 0.86 }, // Tibetan Plateau
+      { pts: [[39, 73], [42, 80], [43, 87]], width: 3.8, height: 0.85 }, // Tian Shan
+      { pts: [[36, 50], [33, 53], [29, 57]], width: 3.5, height: 0.68 }, // Zagros Mountains
+      { pts: [[43, 40], [41, 45], [40, 49]], width: 2.8, height: 0.78 }, // Caucasus
+      { pts: [[39, 28], [38, 35], [39, 43]], width: 3.2, height: 0.65 }, // Anatolian Plateau
+      // Andes Cordillera (Full South American West Coast Spine)
+      { pts: [[10, -74], [4, -76], [-2, -78], [-10, -77], [-16, -70], [-24, -68], [-33, -70], [-42, -72], [-51, -73]], width: 3.6, height: 0.96 },
+      { pts: [[-15, -69], [-20, -66], [-24, -67]], width: 5.2, height: 0.82 }, // Altiplano
+      // North American Cordillera (Alaska Range, Rockies, Cascade/Sierra, Sierra Madre)
+      { pts: [[63, -151], [61, -141], [57, -130], [51, -116], [44, -110], [39, -106], [35, -106]], width: 4.5, height: 0.88 },
+      { pts: [[48, -121], [41, -122], [37, -119], [34, -117]], width: 3.0, height: 0.80 }, // Cascades & Sierra Nevada
+      { pts: [[31, -108], [25, -105], [19, -99], [16, -93]], width: 3.6, height: 0.76 }, // Sierra Madre
+      { pts: [[35, -83], [39, -79], [44, -71]], width: 3.2, height: 0.52 }, // Appalachians
+      // European Alps, Pyrenees, Carpathians, Apennines, Scandes, Urals
+      { pts: [[44, 6], [46, 8], [47, 11], [47, 15]], width: 2.8, height: 0.84 }, // Alps
+      { pts: [[43, -2], [42.6, 1.5], [42.4, 3]], width: 2.2, height: 0.68 }, // Pyrenees
+      { pts: [[44, 10], [42, 13], [40, 16]], width: 2.2, height: 0.62 }, // Italian Apennines
+      { pts: [[49, 19], [47, 25], [45, 25]], width: 2.8, height: 0.64 }, // Carpathians
+      { pts: [[60, 7], [63, 10], [67, 15], [69, 19]], width: 3.0, height: 0.66 }, // Scandinavian Mountains
+      { pts: [[52, 58], [58, 59], [65, 62]], width: 3.0, height: 0.58 }, // Urals
+      // Africa (Atlas, Ethiopian Highlands, East African Rift, Drakensberg)
+      { pts: [[31, -8], [34, -2], [36, 6]], width: 3.2, height: 0.72 }, // Atlas Mountains
+      { pts: [[13, 38], [9, 39], [6, 38]], width: 4.2, height: 0.82 }, // Ethiopian Highlands
+      { pts: [[2, 30], [-3, 35], [-9, 34], [-15, 35]], width: 3.6, height: 0.74 }, // East African Rift / Kilimanjaro
+      { pts: [[-29, 29], [-32, 27], [-33, 22]], width: 3.2, height: 0.64 }, // Drakensberg
+      // Asia-Pacific & Oceania (Japan, Taiwan, New Guinea, New Zealand Southern Alps, Great Dividing Range)
+      { pts: [[35, 136], [37, 138], [40, 140]], width: 2.2, height: 0.74 }, // Japanese Alps
+      { pts: [[-3, 136], [-5, 141], [-7, 146]], width: 2.8, height: 0.84 }, // New Guinea Maoke/Bismarck Range
+      { pts: [[-41, 173], [-43.6, 170], [-45.5, 167.5]], width: 2.2, height: 0.82 }, // NZ Southern Alps
+      { pts: [[-18, 145], [-26, 151], [-33, 150], [-37, 147]], width: 3.2, height: 0.56 } // Great Dividing Range
+    ];
+
+    // Real Mid-Ocean Tectonic Ridges for Subtle Ocean Floor Bathymetry
+    const REAL_OCEAN_RIDGES = [
+      { pts: [[64, -19], [52, -30], [38, -28], [24, -45], [8, -38], [0, -18], [-15, -13], [-35, -15], [-52, -6]], width: 3.8, height: 0.45 }, // Mid-Atlantic Ridge
+      { pts: [[12, 46], [5, 62], [-12, 67], [-25, 70], [-42, 42]], width: 3.8, height: 0.40 }, // Mid-Indian Ridge
+      { pts: [[15, -104], [0, -102], [-20, -113], [-40, -112], [-56, -138]], width: 4.2, height: 0.38 } // East Pacific Rise
+    ];
+
+    // High-Resolution 2048x1024 Global Elevation & Landmask Buffers
+    const MAP_W = 2048;
+    const MAP_H = 1024;
+    const realLandMaskBuffer = new Float32Array(MAP_W * MAP_H);    // [0..1] exact crisp coastline mask (1 = Land, 0 = Water)
+    const realElevationBuffer = new Float32Array(MAP_W * MAP_H);   // [0..1] continental topography + mountain elevation
+    const realBathyBuffer = new Float32Array(MAP_W * MAP_H);       // [0..1] ocean ridge & continental shelf bathymetry
+    let customHeightBuffer = null;
+
+    // Helper: Distance from (lat, lon) in degrees to a polyline chain
+    function distToPolylineDeg(lat, lon, pts) {
+      const cosLat = Math.max(0.15, Math.cos(lat * Math.PI / 180));
+      let minDist = 9999;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const lat1 = pts[i][0], lon1 = pts[i][1];
+        const lat2 = pts[i + 1][0], lon2 = pts[i + 1][1];
+        const px = (lon - lon1) * cosLat, py = lat - lat1;
+        const vx = (lon2 - lon1) * cosLat, vy = lat2 - lat1;
+        const l2 = vx * vx + vy * vy;
+        let t = l2 > 0 ? ((px * vx + py * vy) / l2) : 0;
+        t = Math.max(0, Math.min(1, t));
+        const dx = px - t * vx, dy = py - t * vy;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < minDist) minDist = d;
+      }
+      return minDist;
+    }
+
+    // Load an image with CORS support into an ImageData pixel array
+    function loadCORSImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = MAP_W;
+          c.height = MAP_H;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0, MAP_W, MAP_H);
+          resolve(ctx.getImageData(0, 0, MAP_W, MAP_H).data);
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    // Fetch & Rasterize Real 50m Cartographic World Vector Coastlines + NASA Satellite Topography
+    async function loadRealWorldCartographyAndDEM() {
+      const badge = document.getElementById('cartoStatusBadge');
+      const statusEl = document.getElementById('mapSourceStatus');
+      badge.textContent = 'Loading Real NASA + 50m Map...';
+
+      let vectorLoaded = false;
+      let nasaTopoPixels = null;
+      let nasaWaterPixels = null;
+
+      // 1. Rasterize 50m (or 110m fallback) Natural Earth Vector Coastlines & Lakes
+      try {
+        let res = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-50m.json');
+        if (!res.ok) res = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json');
+        const worldTopo = await res.json();
+        const landFeature = window.topojson.feature(worldTopo, worldTopo.objects.land);
+
+        const vecCanvas = document.createElement('canvas');
+        vecCanvas.width = MAP_W;
+        vecCanvas.height = MAP_H;
+        const vCtx = vecCanvas.getContext('2d');
+
+        // Fill black (Ocean = 0)
+        vCtx.fillStyle = '#000000';
+        vCtx.fillRect(0, 0, MAP_W, MAP_H);
+
+        // Use D3 v7 geoEquirectangular if available, or direct equirectangular ring rasterizer
+        if (window.d3 && window.d3.geoEquirectangular && window.d3.geoPath) {
+          const projection = window.d3.geoEquirectangular()
+            .scale(MAP_W / (2 * Math.PI))
+            .translate([MAP_W / 2, MAP_H / 2]);
+
+          const pathGenerator = window.d3.geoPath(projection, vCtx);
+          vCtx.fillStyle = '#ffffff';
+          vCtx.beginPath();
+          pathGenerator(landFeature);
+          vCtx.fill();
+        } else {
+          // Dependency-free direct Equirectangular GeoJSON polygon rasterizer
+          vCtx.fillStyle = '#ffffff';
+          const drawRing = (ring) => {
+            for (let i = 0; i < ring.length; i++) {
+              const lon = ring[i][0];
+              const lat = ring[i][1];
+              const x = ((lon + 180) / 360) * MAP_W;
+              const y = ((90 - lat) / 180) * MAP_H;
+              if (i === 0) vCtx.moveTo(x, y);
+              else vCtx.lineTo(x, y);
+            }
+            vCtx.closePath();
+          };
+          const drawGeom = (geom) => {
+            if (!geom) return;
+            if (geom.type === 'Polygon') {
+              vCtx.beginPath();
+              geom.coordinates.forEach(drawRing);
+              vCtx.fill('evenodd');
+            } else if (geom.type === 'MultiPolygon') {
+              geom.coordinates.forEach(poly => {
+                vCtx.beginPath();
+                poly.forEach(drawRing);
+                vCtx.fill('evenodd');
+              });
+            } else if (geom.type === 'GeometryCollection' && geom.geometries) {
+              geom.geometries.forEach(drawGeom);
+            }
+          };
+          if (landFeature.type === 'FeatureCollection') {
+            landFeature.features.forEach(f => drawGeom(f.geometry));
+          } else if (landFeature.type === 'Feature') {
+            drawGeom(landFeature.geometry);
+          } else {
+            drawGeom(landFeature);
+          }
+        }
+
+        const vecPixels = vCtx.getImageData(0, 0, MAP_W, MAP_H).data;
+        for (let i = 0; i < MAP_W * MAP_H; i++) {
+          realLandMaskBuffer[i] = vecPixels[i * 4] / 255.0;
+        }
+        vectorLoaded = true;
+      } catch (err) {
+        console.warn('Vector coastline fetch fallback:', err);
+      }
+
+      // 2. Load Real NASA Equirectangular Earth Topography DEM & Water Mask
+      try {
+        const [topoData, waterData] = await Promise.all([
+          loadCORSImage('https://unpkg.com/three-globe/example/img/earth-topology.png'),
+          loadCORSImage('https://unpkg.com/three-globe/example/img/earth-water.png')
+        ]);
+        nasaTopoPixels = topoData;
+        nasaWaterPixels = waterData;
+      } catch (err) {
+        console.warn('NASA texture fetch fallback:', err);
+      }
+
+      // 3. Fuse 50m Vector Coastlines + NASA Satellite Elevation DEM + Real Tectonic Mountain Spines
+      for (let py = 0; py < MAP_H; py++) {
+        const v = py / (MAP_H - 1);
+        const lat = 90 - v * 180;
+        for (let px = 0; px < MAP_W; px++) {
+          const u = px / (MAP_W - 1);
+          const lon = u * 360 - 180;
+          const idx = py * MAP_W + px;
+
+          // Determine exact land/water mask
+          let landMask = realLandMaskBuffer[idx];
+          if (!vectorLoaded && nasaWaterPixels) {
+            // In earth-water.png, dark pixels are land and bright pixels are water
+            const waterVal = nasaWaterPixels[idx * 4] / 255.0;
+            landMask = waterVal < 0.45 ? 1.0 : 0.0;
+            realLandMaskBuffer[idx] = landMask;
+          }
+
+          // Sample NASA topography heightmap [0..1]
+          let nasaElev = 0;
+          if (nasaTopoPixels) {
+            nasaElev = nasaTopoPixels[idx * 4] / 255.0;
+          }
+
+          // Compute real-world mountain chain spine relief
+          let spineElev = 0;
+          if (landMask > 0.05) {
+            for (let m = 0; m < REAL_MOUNTAIN_CHAINS.length; m++) {
+              const chain = REAL_MOUNTAIN_CHAINS[m];
+              const d = distToPolylineDeg(lat, lon, chain.pts);
+              if (d < chain.width) {
+                const profile = Math.pow(1.0 - d / chain.width, 1.5);
+                spineElev = Math.max(spineElev, profile * chain.height);
+              }
+            }
+          }
+
+          if (landMask > 0.05) {
+            // Combine NASA satellite topography with crisp mountain cordillera spines
+            const combinedElev = nasaTopoPixels
+              ? Math.min(1.0, Math.pow(nasaElev, 0.85) * 0.72 + spineElev * 0.55)
+              : Math.min(1.0, 0.15 + spineElev * 0.85);
+            realElevationBuffer[idx] = Math.max(0.06, combinedElev * landMask);
+            realBathyBuffer[idx] = 0.0;
+          } else {
+            realElevationBuffer[idx] = 0.0;
+            // Subtle ocean ridge bathymetry
+            let bathy = nasaTopoPixels ? nasaElev * 0.25 : 0;
+            for (let r = 0; r < REAL_OCEAN_RIDGES.length; r++) {
+              const ridge = REAL_OCEAN_RIDGES[r];
+              const d = distToPolylineDeg(lat, lon, ridge.pts);
+              if (d < ridge.width) {
+                bathy = Math.max(bathy, (1.0 - d / ridge.width) * ridge.height);
+              }
+            }
+            realBathyBuffer[idx] = Math.min(1.0, bathy);
+          }
+        }
+      }
+
+      // 4. Add a 1-pixel anti-aliased continental shelf halo around coastlines for smooth manifold slicing
+      if (vectorLoaded && nasaTopoPixels) {
+        badge.textContent = 'Real NASA DEM + 50m Coastlines Active';
+        statusEl.textContent = '✓ Real 50m World Vector Coastlines + NASA Satellite Topography Loaded';
+      } else if (vectorLoaded) {
+        badge.textContent = 'Real 50m World Vector Active';
+        statusEl.textContent = '✓ Real 50m Natural Earth Coastlines + Cordillera Relief Loaded';
+      } else if (nasaTopoPixels) {
+        badge.textContent = 'Real NASA Satellite DEM Active';
+        statusEl.textContent = '✓ Real NASA Earth Topography & Water Mask Loaded';
+      }
+
+      rebuildAll();
+    }
+
+    // Bilinear sampler from the 2048x1024 elevation buffers
+    function sampleMapBilinear(buffer, u, v) {
+      const fx = (((u % 1) + 1) % 1) * (MAP_W - 1);
+      const fy = Math.max(0, Math.min(1, v)) * (MAP_H - 1);
+      const x0 = Math.floor(fx), y0 = Math.floor(fy);
+      const x1 = (x0 + 1) % MAP_W, y1 = Math.min(MAP_H - 1, y0 + 1);
+      const dx = fx - x0, dy = fy - y0;
+
+      const v00 = buffer[y0 * MAP_W + x0];
+      const v10 = buffer[y0 * MAP_W + x1];
+      const v01 = buffer[y1 * MAP_W + x0];
+      const v11 = buffer[y1 * MAP_W + x1];
+
+      return (v00 * (1 - dx) + v10 * dx) * (1 - dy) + (v01 * (1 - dx) + v11 * dx) * dy;
+    }
+
+    // Compute exact Outer & Inner radius + total wall thickness at spherical UV (u, v)
+    function computeLithophaneWall(u, v, params) {
+      const {
+        outerRadius,
+        baseWall,
+        cliffStep,
+        mountainRelief,
+        bathyDepth,
+        polarityMode,
+        collarFade
+      } = params;
+
+      let landMask = 0;
+      let landElev = 0;
+      let bathyElev = 0;
+
+      if (customHeightBuffer) {
+        const raw = sampleMapBilinear(customHeightBuffer, u, v);
+        if (raw > 0.10) {
+          landMask = Math.min(1.0, (raw - 0.10) / 0.08);
+          landElev = (raw - 0.10) / 0.90;
+        } else {
+          bathyElev = (raw / 0.10) * 0.35;
+        }
+      } else {
+        landMask = sampleMapBilinear(realLandMaskBuffer, u, v);
+        landElev = sampleMapBilinear(realElevationBuffer, u, v);
+        bathyElev = sampleMapBilinear(realBathyBuffer, u, v);
+      }
+
+      const isLand = landMask > 0.25;
+      // Sharp coastline cliff step + continuous NASA mountain relief
+      const crispCoastStep = Math.min(1.0, Math.max(0.0, (landMask - 0.15) / 0.35));
+
+      let extraThickness = 0;
+      if (crispCoastStep > 0) {
+        const landHeight = cliffStep * crispCoastStep + Math.pow(landElev, 0.88) * mountainRelief;
+        const oceanHeight = bathyElev * bathyDepth * (1.0 - crispCoastStep);
+        extraThickness = (landHeight + oceanHeight) * collarFade;
+      } else {
+        extraThickness = (bathyElev * bathyDepth) * collarFade;
+      }
+
+      const maxPossibleRelief = cliffStep + mountainRelief;
+      let rOut = outerRadius;
+      let rIn = outerRadius - baseWall;
+
+      if (polarityMode === 'classic') {
+        rOut = outerRadius + extraThickness;
+        rIn = outerRadius - baseWall;
+      } else if (polarityMode === 'dual') {
+        rOut = outerRadius + extraThickness * 0.68;
+        rIn = (outerRadius - baseWall) - extraThickness * 0.32;
+      } else if (polarityMode === 'inverted') {
+        const invThickness = (maxPossibleRelief - extraThickness) * collarFade;
+        rOut = outerRadius + invThickness;
+        rIn = outerRadius - baseWall;
+      }
+
+      const totalThickness = Math.max(0.6, rOut - rIn);
+      return { rOut, rIn, totalThickness, isLand, landElev };
+    }
+
+    // Render the 2D Topographic & Beer-Lambert Preview Canvas in the Sidebar
+    function update2DTopoPreviewCanvas(params) {
+      const canvas = document.getElementById('topoPreviewCanvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+
+      const isLit = document.getElementById('bulbToggle').checked;
+      const lux = parseFloat(document.getElementById('lux').value);
+
+      for (let y = 0; y < h; y++) {
+        const v = y / (h - 1);
+        for (let x = 0; x < w; x++) {
+          const u = x / (w - 1);
+          const res = computeLithophaneWall(u, v, { ...params, collarFade: 1.0 });
+          const idx = (y * w + x) * 4;
+
+          if (isLit) {
+            // Beer-Lambert transmission preview: I = lux * exp(-0.62 * thickness)
+            const trans = Math.min(1.0, lux * Math.exp(-0.58 * (res.totalThickness - 0.7)));
+            // Warm glowing amber-white gradient
+            data[idx]     = Math.min(255, Math.floor(35 + 245 * Math.pow(trans, 0.75)));
+            data[idx + 1] = Math.min(255, Math.floor(18 + 205 * Math.pow(trans, 1.05)));
+            data[idx + 2] = Math.min(255, Math.floor(10 + 135 * Math.pow(trans, 1.65)));
+            data[idx + 3] = 255;
+          } else {
+            // Unlit elevation relief preview
+            const normT = Math.min(1.0, (res.totalThickness - params.baseWall) / (params.cliffStep + params.mountainRelief + 0.01));
+            if (res.isLand) {
+              data[idx]     = Math.floor(70 + normT * 175);
+              data[idx + 1] = Math.floor(95 + normT * 150);
+              data[idx + 2] = Math.floor(110 + normT * 135);
+            } else {
+              data[idx]     = Math.floor(15 + normT * 90);
+              data[idx + 1] = Math.floor(38 + normT * 130);
+              data[idx + 2] = Math.floor(75 + normT * 160);
+            }
+            data[idx + 3] = 255;
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    // --- Three.js Scene Setup ---
+    const viewport = document.getElementById('viewport');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x070b14);
+
+    const camera = new THREE.PerspectiveCamera(42, viewport.clientWidth / viewport.clientHeight, 1, 2500);
+    camera.position.set(135, 165, 315);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    viewport.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 110, 0);
+    controls.enableDamping = true;
+
+    // Creality CR-10 SE 220x220x265mm Build Volume Reference
+    const bedGrid = new THREE.GridHelper(220, 22, 0x38bdf8, 0x1e293b);
+    scene.add(bedGrid);
+
+    const boxGeo = new THREE.BoxGeometry(220, 265, 220);
+    boxGeo.translate(0, 265 / 2, 0);
+    const buildVolumeBox = new THREE.LineSegments(
+      new THREE.EdgesGeometry(boxGeo),
+      new THREE.LineBasicMaterial({ color: 0x1e293b })
+    );
+    scene.add(buildVolumeBox);
+
+    // Scene Lighting (Dynamically balanced between Day and Night Lithophane Glow)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+    dirLight.position.set(180, 310, 220);
+    scene.add(dirLight);
+
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.35);
+    rimLight.position.set(-190, 140, -160);
+    scene.add(rimLight);
+
+    const bulbLight = new THREE.PointLight(0xff9933, 3.5, 420, 1.2);
+    scene.add(bulbLight);
+
+    const bulbMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(19, 24, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffcc66 })
+    );
+    scene.add(bulbMesh);
+
+    const socketPreviewGroup = new THREE.Group();
+    scene.add(socketPreviewGroup);
+    let wireGuideMesh = null;
+
+    // --- 1. Generate High-Resolution Watertight Earth Globe with Beer-Lambert Vertex Colors ---
+    function generateDetailedEarthGeometry(params) {
+      const {
+        outerRadius,
+        baseWall,
+        cliffStep,
+        mountainRelief,
+        bathyDepth,
+        polarityMode,
+        lonSteps,
+        bottomHoleRadius,
+        isLit,
+        lux
+      } = params;
+
+      const latSteps = Math.floor(lonSteps / 2);
+      const topHoleRadius = 10.5; // 21mm North Pole heat-vent hole
+      const phiStart = Math.asin(Math.min(0.9, topHoleRadius / outerRadius));
+      const phiEnd = Math.PI - Math.asin(Math.min(0.92, bottomHoleRadius / outerRadius));
+
+      const positions = [];
+      const colors = [];
+      const indices = [];
+
+      function addShell(isOuter) {
+        const offset = positions.length / 3;
+        for (let y = 0; y <= latSteps; y++) {
+          const v = y / latSteps;
+          const phi = phiStart + v * (phiEnd - phiStart);
+          const sinPhi = Math.sin(phi);
+          const cosPhi = Math.cos(phi);
+
+          // Map phi to global equirectangular vGlobal [0 = North Pole, 1 = South Pole]
+          const vGlobal = phi / Math.PI;
+          // Smoothly taper relief right at the bottom seating collar so it sits flush in the tree branches
+          const collarFade = v > 0.90 ? Math.max(0, 1.0 - (v - 0.90) / 0.10) : 1.0;
+
+          for (let x = 0; x <= lonSteps; x++) {
+            const u = x / lonSteps;
+            const theta = u * Math.PI * 2;
+            const nx = -Math.cos(theta) * sinPhi;
+            const ny = cosPhi;
+            const nz = Math.sin(theta) * sinPhi;
+
+            const wallData = computeLithophaneWall(u, vGlobal, {
+              outerRadius,
+              baseWall,
+              cliffStep,
+              mountainRelief,
+              bathyDepth,
+              polarityMode,
+              collarFade
+            });
+
+            const r = isOuter ? wallData.rOut : wallData.rIn;
+            positions.push(nx * r, ny * r, nz * r);
+
+            // Compute Beer-Lambert Subsurface Transmission Color per vertex
+            if (isLit) {
+              const trans = Math.min(1.0, lux * Math.exp(-0.56 * (wallData.totalThickness - 0.7)));
+              // High-contrast warm PLA glow: thin oceans glow bright golden-cream, thick mountain ridges are deep amber-brown
+              const cr = Math.min(1.0, 0.14 + 0.96 * Math.pow(trans, 0.72));
+              const cg = Math.min(1.0, 0.06 + 0.80 * Math.pow(trans, 1.05));
+              const cb = Math.min(1.0, 0.03 + 0.52 * Math.pow(trans, 1.60));
+              colors.push(cr, cg, cb);
+            } else {
+              // Unlit Matte Ivory / Bone PLA with subtle topographic shading
+              const elevShade = wallData.isLand ? 0.96 : 0.86;
+              colors.push(elevShade, elevShade * 0.98, elevShade * 0.94);
+            }
+          }
+        }
+        return offset;
+      }
+
+      const outerOffset = addShell(true);
+      const innerOffset = addShell(false);
+      const stride = lonSteps + 1;
+
+      for (let y = 0; y < latSteps; y++) {
+        for (let x = 0; x < lonSteps; x++) {
+          const a = outerOffset + y * stride + x;
+          const b = outerOffset + (y + 1) * stride + x;
+          const c = outerOffset + (y + 1) * stride + (x + 1);
+          const d = outerOffset + y * stride + (x + 1);
+          indices.push(a, b, d, b, c, d);
+
+          const ia = innerOffset + y * stride + x;
+          const ib = innerOffset + (y + 1) * stride + x;
+          const ic = innerOffset + (y + 1) * stride + (x + 1);
+          const id = innerOffset + y * stride + (x + 1);
+          indices.push(ia, id, ib, ib, id, ic);
+        }
+      }
+
+      // Stitch North & South Pole cut rims watertight
+      const lastRing = latSteps * stride;
+      for (let x = 0; x < lonSteps; x++) {
+        indices.push(outerOffset + x, outerOffset + x + 1, innerOffset + x);
+        indices.push(outerOffset + x + 1, innerOffset + x + 1, innerOffset + x);
+
+        const o1 = outerOffset + lastRing + x, o2 = outerOffset + lastRing + x + 1;
+        const i1 = innerOffset + lastRing + x, i2 = innerOffset + lastRing + x + 1;
+        indices.push(o1, i1, o2, o2, i1, i2);
+      }
+
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geom.setIndex(indices);
+      geom.computeBoundingBox();
+      geom.translate(0, -geom.boundingBox.min.y, 0);
+      geom.computeVertexNormals();
+      return geom;
+    }
+
+    // --- 2. Generate Watertight Tree Trunk Base with Solid Floor & Teardrop Side-Wire Portal ---
+    function generateTreeBaseGeometry(params) {
+      const {
+        earthRadius,
+        trunkHeight,
+        numBranches,
+        twistDeg,
+        barkDepth,
+        socketHoleDia,
+        socketCupDepth,
+        wireSlotDia,
+        wireEntryHeight
+      } = params;
+
+      const geoms = [];
+      const socketRad = socketHoleDia / 2;
+      const wireRad = wireSlotDia / 2;
+      const verticalTunnelRad = Math.max(wireRad + 1.5, 6.5);
+      const cupOuterRad = Math.max(socketRad + 5.5, 22);
+      const solidFloorY = Math.max(4, wireEntryHeight - wireRad);
+
+      const ySteps = 84;
+      const aSteps = 80;
+
+      function getOuterRadius(v, theta) {
+        const rootFlare = Math.pow(1 - v, 2.5) * 32;
+        const topFlare = Math.pow(v, 2.8) * 9;
+        const baseR = cupOuterRad * 0.82 + rootFlare + topFlare;
+        const twist = v * (twistDeg * Math.PI / 180);
+        const portalSmooth = Math.min(1.0, Math.abs(Math.atan2(Math.sin(theta), Math.cos(theta))) / 0.45);
+        const rootLobes = Math.sin(theta * numBranches + twist) * (1 - v * 0.65) * (barkDepth * 2.0) * (0.35 + 0.65 * portalSmooth);
+        const fineBark = Math.sin(theta * 20 + v * 12) * Math.cos(theta * 9 - v * 8) * (barkDepth * 0.42);
+        return baseR + rootLobes + fineBark;
+      }
+
+      function getInnerRadius(py) {
+        if (py >= trunkHeight - socketCupDepth) return socketRad;
+        const transitionZone = 10;
+        const cupStart = trunkHeight - socketCupDepth;
+        if (py >= cupStart - transitionZone && socketRad > verticalTunnelRad) {
+          const t = (py - (cupStart - transitionZone)) / transitionZone;
+          return verticalTunnelRad + t * (socketRad - verticalTunnelRad);
+        }
+        return verticalTunnelRad;
+      }
+
+      function isInsideSideWirePortal(py, theta, outerR) {
+        const ang = Math.atan2(Math.sin(theta), Math.cos(theta));
+        const avgR = (outerR + verticalTunnelRad) * 0.5;
+        const hz = ang * avgR;
+        const dy = py - wireEntryHeight;
+        if (Math.abs(ang) > Math.PI * 0.35) return false;
+        if (dy <= 0) {
+          return (hz * hz + dy * dy) <= (wireRad * wireRad);
+        } else {
+          const peakH = wireRad * 1.35;
+          if (dy > peakH) return false;
+          const allowedHalfWidth = wireRad * (1 - dy / peakH);
+          return Math.abs(hz) <= allowedHalfWidth;
+        }
+      }
+
+      const tPos = [];
+      const tIdx = [];
+      const outerGrid = [];
+      const innerGrid = [];
+
+      for (let y = 0; y <= ySteps; y++) {
+        const v = y / ySteps;
+        const py = v * trunkHeight;
+        const oRow = [];
+        const iRow = [];
+
+        for (let x = 0; x <= aSteps; x++) {
+          const u = x / aSteps;
+          const theta = u * Math.PI * 2;
+          const rOut = getOuterRadius(v, theta);
+          const rIn = getInnerRadius(py);
+
+          const oIdx = tPos.length / 3;
+          tPos.push(Math.cos(theta) * rOut, py, Math.sin(theta) * rOut);
+          oRow.push(oIdx);
+
+          const effectiveRIn = py < solidFloorY ? 0.001 : rIn;
+          const iIdx = tPos.length / 3;
+          tPos.push(Math.cos(theta) * effectiveRIn, Math.max(py, solidFloorY), Math.sin(theta) * effectiveRIn);
+          iRow.push(iIdx);
+        }
+        outerGrid.push(oRow);
+        innerGrid.push(iRow);
+      }
+
+      const isHoleCell = [];
+      for (let y = 0; y < ySteps; y++) {
+        const row = [];
+        const pyMid = ((y + 0.5) / ySteps) * trunkHeight;
+        for (let x = 0; x < aSteps; x++) {
+          const thetaMid = ((x + 0.5) / aSteps) * Math.PI * 2;
+          const rOut = getOuterRadius((y + 0.5) / ySteps, thetaMid);
+          const inPortal = pyMid >= solidFloorY && isInsideSideWirePortal(pyMid, thetaMid, rOut);
+          row.push(inPortal);
+        }
+        isHoleCell.push(row);
+      }
+
+      for (let y = 0; y < ySteps; y++) {
+        for (let x = 0; x < aSteps; x++) {
+          if (isHoleCell[y][x]) continue;
+
+          const oA = outerGrid[y][x], oB = outerGrid[y + 1][x];
+          const oC = outerGrid[y + 1][x + 1], oD = outerGrid[y][x + 1];
+          tIdx.push(oA, oD, oB, oB, oD, oC);
+
+          const pyCell = ((y + 0.5) / ySteps) * trunkHeight;
+          const iA = innerGrid[y][x], iB = innerGrid[y + 1][x];
+          const iC = innerGrid[y + 1][x + 1], iD = innerGrid[y][x + 1];
+
+          if (pyCell >= solidFloorY) {
+            tIdx.push(iA, iB, iD, iB, iC, iD);
+          }
+
+          const prevX = (x - 1 + aSteps) % aSteps;
+          const nextX = (x + 1) % aSteps;
+
+          if (isHoleCell[y][prevX]) tIdx.push(oA, oB, iB, oA, iB, iA);
+          if (isHoleCell[y][nextX]) tIdx.push(oD, iD, oC, iD, iC, oC);
+          if (y > 0 && isHoleCell[y - 1][x]) tIdx.push(oA, iA, oD, iA, iD, oD);
+          if (y < ySteps - 1 && isHoleCell[y + 1][x]) tIdx.push(oB, oC, iB, oC, iC, iB);
+        }
+      }
+
+      const bottomCenterIdx = tPos.length / 3;
+      tPos.push(0, 0, 0);
+      const innerFloorCenterIdx = tPos.length / 3;
+      tPos.push(0, solidFloorY, 0);
+      const floorRingY = Math.min(ySteps, Math.ceil((solidFloorY / trunkHeight) * ySteps));
+
+      for (let x = 0; x < aSteps; x++) {
+        tIdx.push(bottomCenterIdx, outerGrid[0][x + 1], outerGrid[0][x]);
+        tIdx.push(innerFloorCenterIdx, innerGrid[floorRingY][x], innerGrid[floorRingY][x + 1]);
+
+        const topO1 = outerGrid[ySteps][x], topO2 = outerGrid[ySteps][x + 1];
+        const topI1 = innerGrid[ySteps][x], topI2 = innerGrid[ySteps][x + 1];
+        tIdx.push(topO1, topO2, topI1, topO2, topI2, topI1);
+      }
+
+      const trunkGeo = new THREE.BufferGeometry();
+      trunkGeo.setAttribute('position', new THREE.Float32BufferAttribute(tPos, 3));
+      trunkGeo.setIndex(tIdx);
+      trunkGeo.computeVertexNormals();
+      geoms.push(trunkGeo);
+
+      // Upward Cradle Branches
+      const cradleDepth = earthRadius * 0.34;
+      const earthCenterY = trunkHeight + earthRadius - cradleDepth * 0.55;
+      const twistRad = (twistDeg * Math.PI) / 180;
+
+      for (let i = 0; i < numBranches; i++) {
+        const baseAngle = ((i + 0.5) / numBranches) * Math.PI * 2;
+        const bSteps = 32;
+        const rSteps = 16;
+        const bPos = [];
+        const bIdx = [];
+
+        for (let s = 0; s <= bSteps; s++) {
+          const t = s / bSteps;
+          const angle = baseAngle + t * twistRad * 0.55;
+          const startR = cupOuterRad * 0.85;
+          const startY = trunkHeight * 0.68;
+
+          const sphereAngle = -Math.PI * 0.38 + t * (Math.PI * 0.25);
+          const targetR = Math.cos(sphereAngle) * (earthRadius + 2.5);
+          const targetY = earthCenterY + Math.sin(sphereAngle) * (earthRadius + 2.5);
+
+          const ease = t * t * (3 - 2 * t);
+          const cx = Math.cos(angle) * (startR * (1 - ease) + targetR * ease);
+          const cz = Math.sin(angle) * (startR * (1 - ease) + targetR * ease);
+          const cy = startY * (1 - t) + targetY * t;
+
+          const branchRad = (1 - t * 0.52) * 8.5 + (t === 1 ? 0 : 1);
+          const radLen = Math.hypot(cx, cz) || 1;
+          const rx = cx / radLen, rz = cz / radLen;
+          const tx = -rz, tz = rx;
+
+          for (let j = 0; j <= rSteps; j++) {
+            const a = (j / rSteps) * Math.PI * 2;
+            const barkWobble = 1 + 0.14 * Math.sin(a * 5 + t * 10);
+            const br = (s === bSteps ? 0.5 : branchRad) * barkWobble;
+
+            const vx = cx + (Math.cos(a) * rx + Math.sin(a) * tx) * br;
+            const vy = cy + Math.sin(a) * br * 0.5;
+            const vz = cz + (Math.cos(a) * rz + Math.sin(a) * tz) * br;
+            bPos.push(vx, vy, vz);
+          }
+        }
+
+        const bStride = rSteps + 1;
+        for (let s = 0; s < bSteps; s++) {
+          for (let j = 0; j < rSteps; j++) {
+            const a = s * bStride + j, b = (s + 1) * bStride + j;
+            const c = (s + 1) * bStride + (j + 1), d = s * bStride + (j + 1);
+            bIdx.push(a, b, d, b, c, d);
+          }
+        }
+
+        const bGeo = new THREE.BufferGeometry();
+        bGeo.setAttribute('position', new THREE.Float32BufferAttribute(bPos, 3));
+        bGeo.setIndex(bIdx);
+        bGeo.computeVertexNormals();
+        geoms.push(bGeo);
+      }
+
+      const merged = BufferGeometryUtils.mergeGeometries(geoms, false);
+      merged.computeBoundingBox();
+      return { geometry: merged, seatY: trunkHeight - 4 };
+    }
+
+    // --- Visual Wire Path & Socket Hardware Preview ---
+    function updateWireAndSocketVisuals(params) {
+      const { trunkHeight, socketHoleDia, socketCupDepth, wireSlotDia, wireEntryHeight, viewMode } = params;
+
+      if (wireGuideMesh) {
+        wireGuideMesh.geometry.dispose();
+        scene.remove(wireGuideMesh);
+        wireGuideMesh = null;
+      }
+
+      while (socketPreviewGroup.children.length > 0) {
+        const child = socketPreviewGroup.children.pop();
+        if (child.geometry) child.geometry.dispose();
+      }
+
+      if (viewMode !== 'earthOnly') {
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(92, wireEntryHeight * 0.65, 0),
+          new THREE.Vector3(50, wireEntryHeight, 0),
+          new THREE.Vector3(14, wireEntryHeight, 0),
+          new THREE.Vector3(0, wireEntryHeight + 16, 0),
+          new THREE.Vector3(0, trunkHeight - socketCupDepth * 0.5, 0)
+        ]);
+
+        const tubeGeo = new THREE.TubeGeometry(curve, 44, Math.min(3.4, wireSlotDia * 0.34), 14, false);
+        const tubeMat = new THREE.MeshStandardMaterial({
+          color: 0x22d3ee,
+          emissive: 0x06b6d4,
+          emissiveIntensity: 0.75,
+          roughness: 0.2
+        });
+        wireGuideMesh = new THREE.Mesh(tubeGeo, tubeMat);
+        scene.add(wireGuideMesh);
+      }
+
+      if (viewMode === 'xray' || viewMode === 'exploded') {
+        const sRad = Math.max(5, socketHoleDia / 2 - 1);
+        const sGeo = new THREE.CylinderGeometry(sRad, sRad, socketCupDepth * 0.9, 32);
+        const sMat = new THREE.MeshStandardMaterial({
+          color: 0xfbbf24,
+          emissive: 0xd97706,
+          emissiveIntensity: 0.3,
+          roughness: 0.3,
+          metalness: 0.6,
+          transparent: true,
+          opacity: 0.85
+        });
+        const sMesh = new THREE.Mesh(sGeo, sMat);
+        sMesh.position.set(0, trunkHeight - socketCupDepth * 0.45, 0);
+        socketPreviewGroup.add(sMesh);
+      }
+    }
+
+    // --- Main Rebuild Orchestrator ---
+    let earthMesh = null;
+    let treeMesh = null;
+
+    function rebuildAll() {
+      const presetKey = document.getElementById('socketPreset').value;
+      const presetInfo = SOCKET_PRESETS[presetKey];
+
+      const earthDiam = parseFloat(document.getElementById('diam').value);
+      const outerRadius = earthDiam / 2;
+      const baseWall = parseFloat(document.getElementById('wall').value);
+      const cliffStep = parseFloat(document.getElementById('cliff').value);
+      const mountainRelief = parseFloat(document.getElementById('relief').value);
+      const bathyDepth = parseFloat(document.getElementById('bathy').value);
+      const lonSteps = parseInt(document.getElementById('res').value, 10);
+      const polarityMode = document.getElementById('polarityMode').value;
+
+      const trunkHeight = parseFloat(document.getElementById('theight').value);
+      const numBranches = parseInt(document.getElementById('branches').value, 10);
+      const twistDeg = parseFloat(document.getElementById('twist').value);
+      const barkDepth = parseFloat(document.getElementById('bark').value);
+      const socketHoleDia = parseFloat(document.getElementById('shole').value);
+      const socketCupDepth = parseFloat(document.getElementById('sdepth').value);
+      const wireSlotDia = parseFloat(document.getElementById('wslot').value);
+      const wireEntryHeight = parseFloat(document.getElementById('wheight').value);
+
+      const viewMode = document.getElementById('viewMode').value;
+      const isLit = document.getElementById('bulbToggle').checked;
+      const lux = parseFloat(document.getElementById('lux').value);
+
+      document.getElementById('hardwareHelpBox').innerHTML = presetInfo.desc;
+      document.getElementById('socketBadge').textContent = presetInfo.badge;
+
+      const earthBottomHoleDia = Math.max(presetInfo.bulbClearanceDia, socketHoleDia + 18);
+
+      const lithoParams = {
+        outerRadius,
+        baseWall,
+        cliffStep,
+        mountainRelief,
+        bathyDepth,
+        polarityMode,
+        lonSteps,
+        bottomHoleRadius: earthBottomHoleDia / 2,
+        isLit,
+        lux
+      };
+
+      update2DTopoPreviewCanvas(lithoParams);
+
+      const earthGeo = generateDetailedEarthGeometry(lithoParams);
+      const treeData = generateTreeBaseGeometry({
+        earthRadius: outerRadius,
+        trunkHeight,
+        numBranches,
+        twistDeg,
+        barkDepth,
+        socketHoleDia,
+        socketCupDepth,
+        wireSlotDia,
+        wireEntryHeight
+      });
+
+      if (earthMesh) { earthMesh.geometry.dispose(); scene.remove(earthMesh); }
+      if (treeMesh) { treeMesh.geometry.dispose(); scene.remove(treeMesh); }
+
+      const isXray = viewMode === 'xray';
+
+      // Adjust external scene lights so that when Internal Bulb is ON, the Beer-Lambert glowing continents pop with dramatic 3D grazing shadows
+      ambientLight.intensity = isLit ? 0.18 : 0.65;
+      dirLight.intensity = isLit ? 0.45 : 0.95;
+
+      // Earth Material uses per-vertex Beer-Lambert colors + grazing directional light to show off the 3D embossed mountain ranges
+      const earthMat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: isLit ? 0.38 : 0.55,
+        metalness: 0.04,
+        transparent: isXray,
+        opacity: isXray ? 0.28 : 1.0,
+        side: THREE.DoubleSide
+      });
+
+      const treeMat = new THREE.MeshStandardMaterial({
+        color: isXray ? 0x38bdf8 : 0x6e4c32,
+        roughness: isXray ? 0.3 : 0.86,
+        metalness: 0.05,
+        transparent: isXray,
+        opacity: isXray ? 0.34 : 1.0,
+        depthWrite: !isXray,
+        side: THREE.DoubleSide
+      });
+
+      earthMesh = new THREE.Mesh(earthGeo, earthMat);
+      treeMesh = new THREE.Mesh(treeData.geometry, treeMat);
+
+      if (viewMode === 'assembled' || viewMode === 'xray') {
+        earthMesh.position.set(0, treeData.seatY, 0);
+        scene.add(treeMesh);
+        scene.add(earthMesh);
+      } else if (viewMode === 'exploded') {
+        earthMesh.position.set(0, treeData.seatY + 58, 0);
+        scene.add(treeMesh);
+        scene.add(earthMesh);
+      } else if (viewMode === 'earthOnly') {
+        earthMesh.position.set(0, 0, 0);
+        scene.add(earthMesh);
+      } else if (viewMode === 'treeOnly') {
+        treeMesh.position.set(0, 0, 0);
+        scene.add(treeMesh);
+      }
+
+      const bulbY = viewMode === 'earthOnly' ? outerRadius : treeData.seatY + outerRadius * 0.72;
+      bulbLight.position.set(0, bulbY, 0);
+      bulbMesh.position.set(0, bulbY, 0);
+      bulbLight.visible = isLit;
+      bulbMesh.visible = isLit && viewMode === 'xray';
+
+      updateWireAndSocketVisuals({
+        trunkHeight,
+        socketHoleDia,
+        socketCupDepth,
+        wireSlotDia,
+        wireEntryHeight,
+        viewMode
+      });
+
+      // Update CR-10 SE HUD
+      const eBox = earthGeo.boundingBox;
+      const eW = (eBox.max.x - eBox.min.x).toFixed(0);
+      const eH = (eBox.max.y - eBox.min.y).toFixed(0);
+      const eFits = eW <= 220 && eH <= 265;
+
+      const tBox = treeData.geometry.boundingBox;
+      const tW = Math.max(tBox.max.x - tBox.min.x, tBox.max.z - tBox.min.z).toFixed(0);
+      const tH = (tBox.max.y - tBox.min.y).toFixed(0);
+      const tFits = tW <= 220 && tH <= 265;
+
+      const maxWall = (baseWall + cliffStep + mountainRelief).toFixed(2);
+      const triCount = (earthGeo.index.count / 3 + treeData.geometry.index.count / 3).toLocaleString();
+
+      document.getElementById('hud-tris').textContent = `${triCount} tris`;
+      document.getElementById('hud-earth').innerHTML =
+        `${eW}×${eW}×${eH} mm <span class="${eFits ? 'text-lime-400' : 'text-red-400'}">${eFits ? '✓ Fits CR-10 SE' : '⚠ Too Large'}</span>`;
+      document.getElementById('hud-wallrange').textContent =
+        `${baseWall.toFixed(1)} mm (Ocean) → ${maxWall} mm (Himalayas/Andes Peaks)`;
+      document.getElementById('hud-tree').innerHTML =
+        `${tW}×${tW}×${tH} mm <span class="${tFits ? 'text-lime-400' : 'text-red-400'}">${tFits ? '✓ Fits CR-10 SE' : '⚠ Too Large'}</span>`;
+      document.getElementById('hud-wire').textContent =
+        `Ø${wireSlotDia.toFixed(1)} mm Teardrop @ ${wireEntryHeight} mm High (Solid Flat Base)`;
+    }
+
+    // --- Bind UI Controls ---
+    const sliders = [
+      { id: 'diam', label: 'v-diam', fmt: v => `${v} mm` },
+      { id: 'wall', label: 'v-wall', fmt: v => `${parseFloat(v).toFixed(1)} mm` },
+      { id: 'cliff', label: 'v-cliff', fmt: v => `${parseFloat(v).toFixed(2)} mm` },
+      { id: 'relief', label: 'v-relief', fmt: v => `${parseFloat(v).toFixed(1)} mm` },
+      { id: 'bathy', label: 'v-bathy', fmt: v => `${parseFloat(v).toFixed(2)} mm` },
+      { id: 'res', label: 'v-res', fmt: v => `${v}×${Math.floor(v / 2)} (${v >= 280 ? 'Ultra' : 'Standard'})` },
+      { id: 'lux', label: 'v-lux', fmt: v => `${parseFloat(v).toFixed(2)}x` },
+      { id: 'theight', label: 'v-theight', fmt: v => `${v} mm` },
+      { id: 'branches', label: 'v-branches', fmt: v => `${v}` },
+      { id: 'twist', label: 'v-twist', fmt: v => `${v}°` },
+      { id: 'bark', label: 'v-bark', fmt: v => `${parseFloat(v).toFixed(1)} mm` },
+      { id: 'shole', label: 'v-shole', fmt: v => `${v} mm` },
+      { id: 'sdepth', label: 'v-sdepth', fmt: v => `${v} mm` },
+      { id: 'wslot', label: 'v-wslot', fmt: v => `${parseFloat(v).toFixed(1)} mm` },
+      { id: 'wheight', label: 'v-wheight', fmt: v => `${v} mm` }
+    ];
+
+    sliders.forEach(s => {
+      const el = document.getElementById(s.id);
+      el.addEventListener('input', () => {
+        document.getElementById(s.label).textContent = s.fmt(el.value);
+        rebuildAll();
+      });
+    });
+
+    document.getElementById('socketPreset').addEventListener('change', (e) => {
+      const p = SOCKET_PRESETS[e.target.value];
+      document.getElementById('shole').value = p.holeDia;
+      document.getElementById('sdepth').value = p.cupDepth;
+      document.getElementById('v-shole').textContent = p.holeDia + ' mm';
+      document.getElementById('v-sdepth').textContent = p.cupDepth + ' mm';
+      rebuildAll();
+    });
+
+    document.getElementById('viewMode').addEventListener('change', rebuildAll);
+    document.getElementById('polarityMode').addEventListener('change', rebuildAll);
+    document.getElementById('bulbToggle').addEventListener('change', rebuildAll);
+
+    document.getElementById('quickLightBtn').addEventListener('click', () => {
+      const bt = document.getElementById('bulbToggle');
+      bt.checked = !bt.checked;
+      rebuildAll();
+    });
+
+    document.getElementById('quickXrayBtn').addEventListener('click', () => {
+      const vm = document.getElementById('viewMode');
+      vm.value = vm.value === 'xray' ? 'assembled' : 'xray';
+      rebuildAll();
+    });
+
+    document.getElementById('regenMapBtn').addEventListener('click', () => {
+      customHeightBuffer = null;
+      document.getElementById('heightmapInput').value = '';
+      loadRealWorldCartographyAndDEM();
+    });
+
+    document.getElementById('heightmapInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = MAP_W;
+          canvas.height = MAP_H;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, MAP_W, MAP_H);
+          const pixels = ctx.getImageData(0, 0, MAP_W, MAP_H).data;
+          customHeightBuffer = new Float32Array(MAP_W * MAP_H);
+          for (let i = 0; i < MAP_W * MAP_H; i++) {
+            customHeightBuffer[i] = (pixels[i * 4] * 0.299 + pixels[i * 4 + 1] * 0.587 + pixels[i * 4 + 2] * 0.114) / 255.0;
+          }
+          document.getElementById('cartoStatusBadge').textContent = 'Custom Heightmap Active';
+          document.getElementById('mapSourceStatus').textContent = `✓ Custom Uploaded Map (${img.width}×${img.height}) Active`;
+          rebuildAll();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // STL Binary Export (Always exports flat on Y=0 print bed)
+    function exportMeshAsSTL(mesh, filename) {
+      if (!mesh) return;
+      const clone = mesh.clone();
+      clone.position.set(0, 0, 0);
+      clone.updateMatrixWorld(true);
+      const exporter = new STLExporter();
+      const result = exporter.parse(clone, { binary: true });
+      const blob = new Blob([result], { type: 'application/octet-stream' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+    }
+
+    document.getElementById('exportEarthBtn').addEventListener('click', () => {
+      exportMeshAsSTL(earthMesh, `CR10SE_Earth_UltraRelief_${document.getElementById('diam').value}mm.stl`);
+    });
+
+    document.getElementById('exportTreeBtn').addEventListener('click', () => {
+      exportMeshAsSTL(treeMesh, `CR10SE_Tree_SideWire_${document.getElementById('theight').value}mm.stl`);
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = viewport.clientWidth / viewport.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    });
+
+    window.onload = function () {
+      rebuildAll();
+      loadRealWorldCartographyAndDEM();
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    };
+  </script>
+</body>
+</html>

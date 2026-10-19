@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LithoForge Studio Pro — Modular 3D Lithophane & Frame STL Generator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        studio: {
+                            950: '#080b10',
+                            900: '#0f141d',
+                            850: '#161d2a',
+                            800: '#1e2738',
+                            700: '#2c384e',
+                            600: '#3e4e6b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * { box-sizing: border-box; user-select: none; }
+        body { background-color: #080b10; color: #f3f4f6; overflow: hidden; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f141d; }
+        ::-webkit-scrollbar-thumb { background: #2c384e; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3e4e6b; }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1e2738;
+            height: 6px;
+            border-radius: 999px;
+            outline: none;
+            border: 1px solid #2c384e;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #f97316;
+            cursor: pointer;
+            border: 2px solid #080b10;
+            box-shadow: 0 0 8px rgba(249, 115, 22, 0.6);
+            transition: transform 0.1s ease, background-color 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #fb923c;
+        }
+        .amber-slider::-webkit-slider-thumb {
+            background: #f59e0b !important;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.6) !important;
+        }
+        #viewport-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            outline: none;
+        }
+        .option-card.active {
+            border-color: #f97316;
+            background-color: rgba(249, 115, 22, 0.12);
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col font-sans antialiased selection:bg-orange-500 selection:text-white">
+
+    <!-- TOP HEADER -->
+    <header class="h-14 bg-studio-900 border-b border-studio-700 px-4 flex items-center justify-between shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg shadow-orange-950/60 border border-orange-400/30">
+                <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-bold text-sm md:text-base tracking-tight text-white">LithoForge <span class="text-orange-400 font-mono text-[11px] px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/30 rounded">CR-10 SE STUDIO</span></h1>
+                </div>
+                <p class="text-[11px] text-gray-400 hidden sm:block">Modular 3D Lithophane, Swappable Picture Insert & Backlit Frame Generator</p>
+            </div>
+        </div>
+
+        <!-- Live Dimension & Print Readout -->
+        <div class="hidden xl:flex items-center gap-3 bg-studio-950 px-3.5 py-1.5 rounded-lg border border-studio-800 text-xs font-mono">
+            <div>
+                <span class="text-gray-400">Size:</span>
+                <span id="header-dim-readout" class="text-orange-400 font-semibold ml-1">150.0 × 112.5 × 15.0 mm</span>
+            </div>
+            <span class="text-studio-700">|</span>
+            <div>
+                <span class="text-gray-400">Est. Print:</span>
+                <span id="header-print-readout" class="text-amber-400 font-semibold ml-1">~3h 40m • 46g PLA</span>
+            </div>
+            <span class="text-studio-700">|</span>
+            <span class="flex items-center gap-1 text-emerald-400"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> CR-10 SE Ready</span>
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="flex items-center gap-2">
+            <!-- Secondary Export Button (Visible when Swappable Slot Frame is selected) -->
+            <button id="btn-export-insert-only" class="hidden px-3 py-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-semibold items-center gap-1.5 transition" title="Export only the slide-in lithophane plate">
+                <i data-lucide="image" class="w-4 h-4"></i>
+                <span class="hidden md:inline">Download Insert .STL</span>
+            </button>
+
+            <button id="btn-slicer-guide" class="px-3 py-2 rounded-lg bg-studio-800 hover:bg-studio-700 text-gray-200 border border-studio-700 text-xs font-medium flex items-center gap-1.5 transition">
+                <i data-lucide="help-circle" class="w-4 h-4 text-orange-400"></i>
+                <span class="hidden md:inline">Print & Slicer Guide</span>
+            </button>
+
+            <button id="btn-export-stl" class="px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white font-semibold text-xs md:text-sm flex items-center gap-2 shadow-lg shadow-orange-950/60 border border-orange-400/30 transition transform active:scale-95">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span id="export-btn-label">Download Ready-to-Print .STL</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+        <!-- LEFT SIDEBAR: PHOTO INSERT & CLARITY PROCESSING -->
+        <aside class="w-full lg:w-80 bg-studio-900 border-b lg:border-b-0 lg:border-r border-studio-700 flex flex-col shrink-0 overflow-y-auto max-h-[38vh] lg:max-h-full z-10">
+            <div class="p-3 border-b border-studio-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="image-plus" class="w-4 h-4 text-orange-400"></i>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-gray-200">1. Picture Insert & Clarity</h2>
+                </div>
+                <button id="btn-reset-image" class="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 transition">
+                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
+                </button>
+            </div>
+
+            <div class="p-3.5 space-y-4 flex-1">
+                <!-- Upload / Swap Photo Box -->
+                <div id="dropzone" class="relative group border-2 border-dashed border-studio-700 hover:border-orange-500/80 rounded-xl p-3 bg-studio-950/70 transition cursor-pointer text-center">
+                    <input type="file" id="file-input" accept="image/*" class="hidden">
+                    <div class="flex items-center justify-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center group-hover:scale-105 transition shrink-0">
+                            <i data-lucide="upload" class="w-4 h-4 text-orange-400"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-xs font-semibold text-gray-200">Upload / Swap Photo Insert</p>
+                            <p class="text-[10px] text-gray-400">Click or Drag JPG, PNG, WebP</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Preset Photo Switcher -->
+                <div class="space-y-1.5">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Quick Sample Inserts:</span>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button data-preset="family" class="preset-btn px-2 py-1.5 rounded bg-studio-800 hover:bg-studio-700 border border-orange-500/50 text-[11px] font-medium text-gray-200 transition">Family Sofa</button>
+                        <button data-preset="mountain" class="preset-btn px-2 py-1.5 rounded bg-studio-800 hover:bg-studio-700 border border-studio-700 text-[11px] font-medium text-gray-300 transition">Alpine Lake</button>
+                        <button data-preset="pet" class="preset-btn px-2 py-1.5 rounded bg-studio-800 hover:bg-studio-700 border border-studio-700 text-[11px] font-medium text-gray-300 transition">Golden Dog</button>
+                    </div>
+                </div>
+
+                <!-- 2D Depth Heightmap Preview -->
+                <div class="bg-studio-950 p-2.5 rounded-xl border border-studio-800 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-medium text-gray-400">Processed 3D Relief Map</span>
+                        <span id="aspect-badge" class="text-[10px] font-mono text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded">4:3 Ratio</span>
+                    </div>
+                    <div class="relative w-full h-28 bg-studio-900 rounded-lg overflow-hidden flex items-center justify-center border border-studio-800">
+                        <canvas id="preview-2d-canvas" class="max-w-full max-h-full object-contain"></canvas>
+                    </div>
+                </div>
+
+                <!-- Image Enhancement Sliders -->
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <label class="text-gray-300 font-medium flex items-center gap-1">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-orange-400"></i> Edge Sharpness
+                            </label>
+                            <span id="val-sharpness" class="font-mono text-orange-400 text-xs">Level 2 (High)</span>
+                        </div>
+                        <input type="range" id="param-sharpness" min="0" max="4" step="1" value="2" class="w-full">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <label class="text-gray-300 font-medium">Contrast Curve</label>
+                            <span id="val-contrast" class="font-mono text-orange-400 text-xs">+25%</span>
+                        </div>
+                        <input type="range" id="param-contrast" min="-40" max="80" step="5" value="25" class="w-full">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <label class="text-gray-300 font-medium">Brightness Offset</label>
+                            <span id="val-brightness" class="font-mono text-orange-400 text-xs">0%</span>
+                        </div>
+                        <input type="range" id="param-brightness" min="-40" max="40" step="5" value="0" class="w-full">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <label class="text-gray-300 font-medium">Surface Smoothing</label>
+                            <span id="val-blur" class="font-mono text-orange-400 text-xs">0.8 px</span>
+                        </div>
+                        <input type="range" id="param-blur" min="0" max="3.5" step="0.2" value="0.8" class="w-full">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button id="btn-toggle-invert" class="px-2.5 py-2 rounded-lg bg-studio-800 hover:bg-studio-700 border border-studio-700 text-xs font-medium flex items-center justify-center gap-1.5 text-gray-200 transition">
+                            <i data-lucide="contrast" class="w-3.5 h-3.5 text-orange-400"></i>
+                            <span id="invert-label">Positive (Std)</span>
+                        </button>
+                        <button id="btn-toggle-mirror" class="px-2.5 py-2 rounded-lg bg-studio-800 hover:bg-studio-700 border border-studio-700 text-xs font-medium flex items-center justify-center gap-1.5 text-gray-200 transition">
+                            <i data-lucide="flip-horizontal" class="w-3.5 h-3.5 text-gray-400"></i>
+                            <span>Mirror Flip</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER 3D INTERACTIVE VIEWPORT -->
+        <main class="flex-1 relative bg-studio-950 flex flex-col overflow-hidden">
+            <!-- Top Overlay Toolbar -->
+            <div class="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 pointer-events-none z-10">
+                <!-- Lighting & Material Mode -->
+                <div class="pointer-events-auto flex items-center bg-studio-900/95 backdrop-blur-md p-1 rounded-xl border border-studio-700 shadow-xl">
+                    <button id="mode-backlit" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-amber-500 text-slate-950 shadow transition">
+                        <i data-lucide="sun" class="w-3.5 h-3.5"></i>
+                        <span>Backlit Warm LED Glow</span>
+                    </button>
+                    <button id="mode-unlit" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 hover:text-white transition">
+                        <i data-lucide="box" class="w-3.5 h-3.5"></i>
+                        <span>Raw White PLA Print</span>
+                    </button>
+                </div>
+
+                <!-- Camera & Exploded Insert Inspection -->
+                <div class="pointer-events-auto flex items-center gap-1 bg-studio-900/95 backdrop-blur-md p-1 rounded-xl border border-studio-700 shadow-xl">
+                    <button id="btn-slide-insert" class="hidden px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40 hover:bg-orange-500/30 items-center gap-1 transition">
+                        <i data-lucide="move-vertical" class="w-3.5 h-3.5"></i>
+                        <span id="slide-insert-label">Slide Insert Out</span>
+                    </button>
+                    <button id="cam-front" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-200 hover:bg-studio-800 transition">Front</button>
+                    <button id="cam-iso" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-200 hover:bg-studio-800 transition">3D Corner</button>
+                    <button id="cam-back" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-amber-400 hover:bg-studio-800 flex items-center gap-1 transition">
+                        <i data-lucide="rotate-3d" class="w-3.5 h-3.5"></i> Inspect Rear Cavity & Mounts
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Configuration Pill Badge -->
+            <div class="absolute top-16 left-3 pointer-events-none z-10 hidden sm:flex flex-wrap gap-1.5">
+                <span id="badge-frame" class="px-2.5 py-1 rounded-full bg-studio-900/90 border border-studio-700 text-[11px] text-gray-300 font-medium">Frame: Modern Flat</span>
+                <span id="badge-wall" class="px-2.5 py-1 rounded-full bg-studio-900/90 border border-studio-700 text-[11px] text-gray-300 font-medium">Wall: Keyhole Slot</span>
+                <span id="badge-desk" class="px-2.5 py-1 rounded-full bg-studio-900/90 border border-studio-700 text-[11px] text-gray-300 font-medium">Desk: Angled Back-Strut</span>
+            </div>
+
+            <!-- Three.js Canvas -->
+            <div id="viewport-container" class="w-full h-full relative cursor-grab active:cursor-grabbing"></div>
+
+            <!-- Bottom Backlight Simulator Bar -->
+            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 w-[94%] max-w-xl pointer-events-auto bg-studio-900/95 backdrop-blur-md border border-studio-700 rounded-2xl px-4 py-2.5 shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 z-10">
+                <div class="flex items-center gap-2.5 w-full sm:w-1/2">
+                    <i data-lucide="lightbulb" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                    <div class="w-full">
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-gray-300 font-medium">LED Backlight Brightness</span>
+                            <span id="val-light-intensity" class="font-mono text-amber-400">135%</span>
+                        </div>
+                        <input type="range" id="param-light-intensity" min="10" max="240" step="5" value="135" class="w-full amber-slider">
+                    </div>
+                </div>
+
+                <div class="hidden sm:block h-7 w-px bg-studio-700"></div>
+
+                <div class="flex items-center gap-2.5 w-full sm:w-1/2">
+                    <i data-lucide="flame" class="w-4 h-4 text-orange-400 shrink-0"></i>
+                    <div class="w-full">
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-gray-300 font-medium">LED Color Temperature</span>
+                            <span id="val-light-warmth" class="font-mono text-amber-400">3000K Warm</span>
+                        </div>
+                        <input type="range" id="param-light-warmth" min="0" max="100" step="5" value="75" class="w-full amber-slider">
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR: MODULAR FRAME, MOUNTS, STANDS & DIMENSIONS -->
+        <aside class="w-full lg:w-96 bg-studio-900 border-t lg:border-t-0 lg:border-l border-studio-700 flex flex-col shrink-0 overflow-y-auto max-h-[45vh] lg:max-h-full z-10">
+            <div class="p-3 border-b border-studio-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="SlidersHorizontal" class="w-4 h-4 text-orange-400"></i>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-gray-200">2. Frame, Mounts & Dimensions</h2>
+                </div>
+                <span class="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">Max 220×220mm</span>
+            </div>
+
+            <div class="p-3.5 space-y-5 flex-1">
+
+                <!-- SECTION A: 5 FRAME DESIGN STYLES -->
+                <div class="space-y-2">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                        <i data-lucide="frame" class="w-3.5 h-3.5"></i> Frame Design Style
+                    </label>
+                    <div class="grid grid-cols-1 gap-1.5" id="frame-style-group">
+                        <button data-frame="modern" class="option-card active text-left p-2.5 rounded-xl border border-studio-700 bg-studio-950 hover:border-studio-600 transition flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold">Modern Flat Frame</div>
+                                <div class="text-[10px] text-gray-400">Clean minimalist rectangular bevel with rear LED channel</div>
+                            </div>
+                            <i data-lucide="square" class="w-4 h-4 text-orange-400 shrink-0"></i>
+                        </button>
+
+                        <button data-frame="ornate" class="option-card text-left p-2.5 rounded-xl border border-studio-700 bg-studio-950 hover:border-studio-600 transition flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold">Ornate Stepped Molding</div>
+                                <div class="text-[10px] text-gray-400">Classic multi-tier architectural picture frame profile</div>
+                            </div>
+                            <i data-lucide="layers-3" class="w-4 h-4 text-orange-400 shrink-0"></i>
+                        </button>
+
+                        <button data-frame="arch" class="option-card text-left p-2.5 rounded-xl border border-studio-700 bg-studio-950 hover:border-studio-600 transition flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold">Rounded Arch Top</div>
+                                <div class="text-[10px] text-gray-400">Graceful cathedral arch crown with straight pillars</div>
+                            </div>
+                            <i data-lucide="landmark" class="w-4 h-4 text-orange-400 shrink-0"></i>
+                        </button>
+
+                        <button data-frame="borderless" class="option-card text-left p-2.5 rounded-xl border border-studio-700 bg-studio-950 hover:border-studio-600 transition flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold">Minimalist Borderless</div>
+                                <div class="text-[10px] text-gray-400">Edge-to-edge front lithophane with hidden rear light box</div>
+                            </div>
+                            <i data-lucide="maximize" class="w-4 h-4 text-orange-400 shrink-0"></i>
+                        </button>
+
+                        <button data-frame="swappable" class="option-card text-left p-2.5 rounded-xl border border-studio-700 bg-studio-950 hover:border-studio-600 transition flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold flex items-center gap-1.5">
+                                    <span>Swappable Slot Frame</span>
+                                    <span class="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40">Modular</span>
+                                </div>
+                                <div class="text-[10px] text-gray-400">Top slide-in U-channel rail so picture inserts swap anytime!</div>
+                            </div>
+                            <i data-lucide="folder-down" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                        </button>
+                    </div>
+
+                    <!-- Swappable Export Mode Sub-selector (Hidden unless Swappable is chosen) -->
+                    <div id="swappable-subpanel" class="hidden p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 mt-2">
+                        <div class="text-[11px] font-semibold text-amber-300 flex items-center justify-between">
+                            <span>Swappable Part Selection:</span>
+                            <span class="font-mono text-[10px]">0.4mm Tolerance Gap</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1">
+                            <button data-swapmode="both" class="swapmode-btn bg-amber-500 text-slate-950 font-semibold text-[10px] py-1.5 px-2 rounded transition">Both Assembled</button>
+                            <button data-swapmode="frame" class="swapmode-btn bg-studio-900 text-gray-300 hover:text-white font-medium text-[10px] py-1.5 px-2 rounded border border-studio-700 transition">Frame Only</button>
+                            <button data-swapmode="insert" class="swapmode-btn bg-studio-900 text-gray-300 hover:text-white font-medium text-[10px] py-1.5 px-2 rounded border border-studio-700 transition">Insert Only</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-studio-800">
+
+                <!-- SECTION B: 4 WALL HANGING TYPES -->
+                <div class="space-y-2">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <i data-lucide="pin" class="w-3.5 h-3.5"></i> Wall Hanging Hardware (Rear)
+                    </label>
+                    <div class="grid grid-cols-2 gap-1.5" id="wall-mount-group">
+                        <button data-wall="none" class="option-card p-2 rounded-xl border border-studio-700 bg-studio-950 text-left transition">
+                            <div class="text-xs font-semibold">None</div>
+                            <div class="text-[10px] text-gray-400">Flush rear top</div>
+                        </button>
+                        <button data-wall="keyhole" class="option-card active p-2 rounded-xl border border-studio-700 bg-studio-950 text-left transition">
+                            <div class="text-xs font-semibold">Keyhole Slot</div>
+                            <div class="text-[10px] text-gray-400">Center nail/screw lock</div>
+                        </button>
+                        <button data-wall="dring" class="option-card p-2 rounded-xl border border-studio-700 bg-studio-950 text-left transition">
+                            <div class="text-xs font-semibold">Dual D-Ring Notches</div>
+                            <div class="text-[10px] text-gray-400">Left & right hook slots</div>
+                        </button>
+                        <button data-wall="loop" class="option-card p-2 rounded-xl border border-studio-700 bg-studio-950 text-left transition">
+                            <div class="text-xs font-semibold">Top Hanging Loop</div>
+                            <div class="text-[10px] text-gray-400">Heavy-duty eyelet tab</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SECTION C: 4 DESK BASE TYPES -->
+                <div class="space-y-2">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <i data-lucide="footprints" class="w-3.5 h-3.5"></i> Desk Base & Stand Type
+                    </label>
+                    <div class="grid grid-cols-2 gap-1.5" id="desk-base-group">
+                        <button data-desk="none" class="option-card p-2 rounded-xl border border-studio-700 bg-studio-950 text-left transition">
+                            <div class="text-xs font-semibold">None (Wall Only)</div>
+                            <div class="text-[10px] text-gray-400">Flat bottom edge</div>
+                        </button>
+                        <button data-desk="strut" class="option-card active p-2 rounded-xl border border-studio-700 bg-studio-950 text-left transition">
+                            <div class="text-xs font-semibold">Angled Back-Strut</div>
+                            <div class="text-[10px] text-gray-400">Easel kickstand wing</div>
+                        </button>
+                        <button data-desk="pedestal" class="option-card p-2 rounded-xl border border-studio-700 bg-studio-950 text-left transition">
+                            <div class="text-xs font-semibold">Wide Base Pedestal</div>
+                            <div class="text-[10px] text-gray-400">Flared base + cord slot</div>
+                        </button>
+                        <button data-desk="feet" class="option-card p-2 rounded-xl border border-studio-700 bg-studio-950 text-left transition">
+                            <div class="text-xs font-semibold">Dual Corner Feet</div>
+                            <div class="text-[10px] text-gray-400">Front & rear stabilizer</div>
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-studio-800">
+
+                <!-- SECTION D: PHYSICAL DIMENSIONS (CR-10 SE OPTIMIZED) -->
+                <div class="space-y-3">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                        <i data-lucide="ruler" class="w-3.5 h-3.5"></i> CR-10 SE Dimensions (mm)
+                    </label>
+
+                    <!-- Total Width -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-300 font-medium">Total Outer Width</span>
+                            <span id="val-width" class="font-mono text-orange-400">150 mm</span>
+                        </div>
+                        <input type="range" id="param-width" min="80" max="210" step="5" value="150" class="w-full">
+                        <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                            <span>Height: <strong id="val-auto-height" class="text-gray-200 font-mono">112.5 mm</strong></span>
+                            <span>Max Bed: 220×220 mm</span>
+                        </div>
+                    </div>
+
+                    <!-- Min & Max Lithophane Thickness -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-gray-300">Min (Bright)</span>
+                                <span id="val-min-thick" class="font-mono text-orange-400">0.8 mm</span>
+                            </div>
+                            <input type="range" id="param-min-thick" min="0.6" max="1.6" step="0.1" value="0.8" class="w-full">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-gray-300">Max (Dark)</span>
+                                <span id="val-max-thick" class="font-mono text-orange-400">3.0 mm</span>
+                            </div>
+                            <input type="range" id="param-max-thick" min="2.0" max="4.0" step="0.1" value="3.0" class="w-full">
+                        </div>
+                    </div>
+
+                    <!-- Frame Width & Rear LED Depth -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-gray-300">Frame Border</span>
+                                <span id="val-frame-width" class="font-mono text-orange-400">12 mm</span>
+                            </div>
+                            <input type="range" id="param-frame-width" min="5" max="25" step="1" value="12" class="w-full">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-gray-300">LED Cavity Depth</span>
+                                <span id="val-frame-depth" class="font-mono text-orange-400">15 mm</span>
+                            </div>
+                            <input type="range" id="param-frame-depth" min="5" max="35" step="1" value="15" class="w-full">
+                        </div>
+                    </div>
+
+                    <!-- Mesh Resolution -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-300 font-medium">Mesh Grid Resolution</span>
+                            <span id="val-res" class="font-mono text-amber-400">High (180×135)</span>
+                        </div>
+                        <input type="range" id="param-res" min="100" max="220" step="20" value="180" class="w-full">
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+    </div>
+
+    <!-- SLICER & LED BACKLIGHT MODAL -->
+    <div id="slicer-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-studio-900 border border-studio-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-studio-800 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
+                        <i data-lucide="printer" class="w-4 h-4 text-orange-400"></i>
+                    </div>
+                    <h3 class="font-bold text-base text-white">Creality CR-10 SE Print & Assembly Guide</h3>
+                </div>
+                <button id="close-slicer-modal" class="text-gray-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
+                <div class="p-3 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-200">
+                    <strong>Swappable Slot Frame Tip:</strong> When using the <em>Swappable Slot Frame</em> style, you can export the <strong>Frame Only .STL</strong> once, and print as many <strong>Slide-In Picture Insert .STL</strong> plates as you like to swap photos in seconds!
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5 font-mono">
+                    <div class="bg-studio-950 p-2.5 rounded-lg border border-studio-800">
+                        <div class="text-[10px] text-gray-400 uppercase">Perimeters / Infill</div>
+                        <div class="text-sm font-bold text-white mt-0.5">100% Solid</div>
+                        <div class="text-[10px] text-orange-400">Or 99% Rectilinear / 10 Walls</div>
+                    </div>
+                    <div class="bg-studio-950 p-2.5 rounded-lg border border-studio-800">
+                        <div class="text-[10px] text-gray-400 uppercase">Layer Height</div>
+                        <div class="text-sm font-bold text-white mt-0.5">0.12 mm</div>
+                        <div class="text-[10px] text-orange-400">0.4mm Nozzle • White PLA</div>
+                    </div>
+                    <div class="bg-studio-950 p-2.5 rounded-lg border border-studio-800">
+                        <div class="text-[10px] text-gray-400 uppercase">Print Orientation</div>
+                        <div class="text-sm font-bold text-white mt-0.5">Standing Vertical</div>
+                        <div class="text-[10px] text-amber-400">Auto-oriented in exported STL</div>
+                    </div>
+                    <div class="bg-studio-950 p-2.5 rounded-lg border border-studio-800">
+                        <div class="text-[10px] text-gray-400 uppercase">Wire Routing</div>
+                        <div class="text-sm font-bold text-white mt-0.5">Bottom Notch</div>
+                        <div class="text-[10px] text-emerald-400">Built-in 8mm USB cable pass-through</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button id="close-slicer-modal-btn" class="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-400 text-slate-950 font-semibold text-xs transition">
+                    Got It, Let's Print!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-studio-900 border border-orange-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50 pointer-events-none">
+        <div class="w-7 h-7 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-400">
+            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+        </div>
+        <div>
+            <div id="toast-title" class="text-xs font-bold">STL Export Complete</div>
+            <div id="toast-desc" class="text-[11px] text-gray-400">Saved watertight binary .stl</div>
+        </div>
+    </div>
+
+    <!-- APPLICATION SCRIPT -->
+    <script>
+        lucide.createIcons();
+
+        // ============================================================================
+        // APPLICATION STATE
+        // ============================================================================
+        const state = {
+            // Image adjustments
+            sharpness: 2,
+            contrast: 25,
+            brightness: 0,
+            blur: 0.8,
+            invert: false,
+            mirror: false,
+            aspectRatio: 4 / 3,
+
+            // Modular Frame, Wall & Desk Selections
+            frameStyle: 'modern',    // 'modern' | 'ornate' | 'arch' | 'borderless' | 'swappable'
+            swapPartMode: 'both',    // 'both' | 'frame' | 'insert'
+            slideInsertOut: false,   // Visual preview animation for swappable insert
+            wallMount: 'keyhole',    // 'none' | 'keyhole' | 'dring' | 'loop'
+            deskBase: 'strut',       // 'none' | 'strut' | 'pedestal' | 'feet'
+
+            // Physical Dimensions (mm)
+            widthMM: 150,
+            minThickMM: 0.8,
+            maxThickMM: 3.0,
+            frameWidthMM: 12.0,
+            frameDepthMM: 15.0,
+            gridRes: 180,
+
+            // Viewport & Backlight
+            viewMode: 'backlit',
+            lightIntensity: 1.35,
+            lightWarmth: 75
+        };
+
+        let sourceImage = null;
+        let heightmapData = null;
+        let gridCols = 180;
+        let gridRows = 135;
+
+        let scene, camera, renderer, controls;
+        let mainGroup = null;
+        let frameMesh = null;
+        let insertMesh = null;
+        let combinedGeometryForExport = null;
+        let insertOnlyGeometryForExport = null;
+        let backlitMaterial = null;
+        let unlitMaterial = null;
+        let framePlasticMaterial = null;
+        let frontDirectionalLight, ambientLight, backPointLight, ledBulbHelper;
+
+        // ============================================================================
+        // PROCEDURAL SAMPLE PHOTO GENERATORS (FAMILY, MOUNTAIN, PET)
+        // ============================================================================
+        function createPresetSampleCanvas(type = 'family') {
+            const c = document.createElement('canvas');
+            c.width = 800;
+            c.height = 600;
+            const ctx = c.getContext('2d');
+
+            if (type === 'mountain') {
+                const sky = ctx.createLinearGradient(0, 0, 0, 360);
+                sky.addColorStop(0, '#cbd5e1');
+                sky.addColorStop(1, '#f8fafc');
+                ctx.fillStyle = sky;
+                ctx.fillRect(0, 0, 800, 600);
+
+                // Sun
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(600, 110, 48, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Peaks
+                ctx.fillStyle = '#334155';
+                ctx.beginPath();
+                ctx.moveTo(0, 380);
+                ctx.lineTo(190, 140);
+                ctx.lineTo(370, 320);
+                ctx.lineTo(540, 110);
+                ctx.lineTo(800, 360);
+                ctx.lineTo(800, 400);
+                ctx.lineTo(0, 400);
+                ctx.fill();
+
+                // Pine trees & lake reflection
+                ctx.fillStyle = '#0f172a';
+                for (let x = 20; x < 780; x += 35) {
+                    const h = 45 + (x % 40);
+                    ctx.beginPath();
+                    ctx.moveTo(x, 400);
+                    ctx.lineTo(x + 14, 400 - h);
+                    ctx.lineTo(x + 28, 400);
+                    ctx.fill();
+                }
+
+                const lake = ctx.createLinearGradient(0, 400, 0, 600);
+                lake.addColorStop(0, '#94a3b8');
+                lake.addColorStop(1, '#1e293b');
+                ctx.fillStyle = lake;
+                ctx.fillRect(0, 400, 800, 200);
+                return c;
+            }
+
+            if (type === 'pet') {
+                const bg = ctx.createRadialGradient(400, 300, 80, 400, 300, 480);
+                bg.addColorStop(0, '#f1f5f9');
+                bg.addColorStop(1, '#475569');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, 800, 600);
+
+                // Ears
+                ctx.fillStyle = '#3b2516';
+                ctx.beginPath();
+                ctx.ellipse(265, 250, 55, 110, 0.35, 0, Math.PI * 2);
+                ctx.ellipse(535, 250, 55, 110, -0.35, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Body & Head
+                ctx.fillStyle = '#855836';
+                ctx.beginPath();
+                ctx.ellipse(400, 520, 175, 160, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                const headGrad = ctx.createRadialGradient(380, 240, 30, 400, 270, 155);
+                headGrad.addColorStop(0, '#d4a373');
+                headGrad.addColorStop(1, '#6f4528');
+                ctx.fillStyle = headGrad;
+                ctx.beginPath();
+                ctx.arc(400, 265, 135, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyes & Nose
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(345, 235, 16, 0, Math.PI * 2);
+                ctx.arc(455, 235, 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(340, 230, 5, 0, Math.PI * 2);
+                ctx.arc(450, 230, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#1e1b18';
+                ctx.beginPath();
+                ctx.ellipse(400, 295, 28, 20, 0, 0, Math.PI * 2);
+                ctx.fill();
+                return c;
+            }
+
+            // Default: Family Portrait on Sofa with Painting
+            const wallGrad = ctx.createRadialGradient(400, 260, 90, 400, 300, 520);
+            wallGrad.addColorStop(0, '#f8fafc');
+            wallGrad.addColorStop(0.65, '#e2e8f0');
+            wallGrad.addColorStop(1, '#94a3b8');
+            ctx.fillStyle = wallGrad;
+            ctx.fillRect(0, 0, 800, 600);
+
+            // Framed Wall Art
+            ctx.fillStyle = '#2d1f16';
+            ctx.fillRect(310, 42, 290, 168);
+            ctx.strokeStyle = '#78553a';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(315, 47, 280, 158);
+            ctx.fillStyle = '#1b3126';
+            ctx.fillRect(320, 52, 270, 148);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.beginPath();
+            ctx.arc(375, 95, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c29b70';
+            ctx.beginPath();
+            ctx.arc(455, 125, 15, 0, Math.PI * 2);
+            ctx.arc(515, 105, 16, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Leather Couch
+            const sofaGrad = ctx.createLinearGradient(80, 270, 80, 600);
+            sofaGrad.addColorStop(0, '#261d19');
+            sofaGrad.addColorStop(0.5, '#16110e');
+            sofaGrad.addColorStop(1, '#090705');
+            ctx.fillStyle = sofaGrad;
+            ctx.beginPath();
+            ctx.roundRect(110, 275, 210, 160, 20);
+            ctx.roundRect(320, 275, 280, 160, 20);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(85, 400, 58, 0, Math.PI * 2);
+            ctx.arc(655, 400, 55, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(55, 400, 635, 200);
+
+            function drawPerson(cx, cy, headR, hairColor, shirtColor, floral) {
+                ctx.fillStyle = shirtColor;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy + headR * 2.55, headR * 1.65, headR * 1.9, 0, 0, Math.PI * 2);
+                ctx.fill();
+                if (floral) {
+                    ctx.fillStyle = '#d97757';
+                    for (let i = -24; i <= 24; i += 14) {
+                        for (let j = 45; j <= 125; j += 20) {
+                            ctx.beginPath();
+                            ctx.arc(cx + i, cy + j, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+                const faceGrad = ctx.createRadialGradient(cx - 6, cy - 6, 4, cx, cy, headR);
+                faceGrad.addColorStop(0, '#f3d5c1');
+                faceGrad.addColorStop(0.7, '#c79d82');
+                faceGrad.addColorStop(1, '#87614c');
+                ctx.fillStyle = faceGrad;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, headR * 0.88, headR * 1.06, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = hairColor;
+                ctx.beginPath();
+                ctx.arc(cx, cy - headR * 0.25, headR * 0.92, Math.PI * 0.95, Math.PI * 2.05);
+                ctx.fill();
+
+                ctx.fillStyle = '#1c1512';
+                ctx.beginPath();
+                ctx.arc(cx - headR * 0.32, cy - headR * 0.08, headR * 0.09, 0, Math.PI * 2);
+                ctx.arc(cx + headR * 0.32, cy - headR * 0.08, headR * 0.09, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#3b2318';
+                ctx.lineWidth = 2.6;
+                ctx.beginPath();
+                ctx.arc(cx, cy + headR * 0.18, headR * 0.3, 0.15 * Math.PI, 0.85 * Math.PI);
+                ctx.stroke();
+            }
+
+            drawPerson(385, 265, 36, '#141417', '#1e293b', false);
+            drawPerson(490, 285, 34, '#111113', '#fef08a', true);
+            drawPerson(610, 215, 35, '#121215', '#1e293b', false);
+
+            return c;
+        }
+
+        // ============================================================================
+        // IMAGE TO HEIGHTMAP PIPELINE (WITH UNSHARP MASK EDGE ENHANCER)
+        // ============================================================================
+        function processImageToHeightmap() {
+            if (!sourceImage) return;
+
+            const imgW = sourceImage.width || sourceImage.naturalWidth;
+            const imgH = sourceImage.height || sourceImage.naturalHeight;
+            state.aspectRatio = imgW / imgH;
+
+            const autoHeightMM = state.widthMM / state.aspectRatio;
+            document.getElementById('val-auto-height').textContent = `${autoHeightMM.toFixed(1)} mm`;
+            document.getElementById('aspect-badge').textContent = `${imgW}×${imgH}`;
+
+            gridCols = parseInt(state.gridRes, 10);
+            gridRows = Math.max(60, Math.round(gridCols / state.aspectRatio));
+
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = gridCols;
+            offCanvas.height = gridRows;
+            const ctx = offCanvas.getContext('2d');
+
+            ctx.save();
+            if (state.mirror) {
+                ctx.translate(gridCols, 0);
+                ctx.scale(-1, 1);
+            }
+            const scaledBlur = (state.blur * gridCols) / 200;
+            if (scaledBlur > 0) {
+                ctx.filter = `blur(${scaledBlur.toFixed(2)}px)`;
+            }
+            ctx.drawImage(sourceImage, 0, 0, gridCols, gridRows);
+            ctx.restore();
+
+            const imgData = ctx.getImageData(0, 0, gridCols, gridRows);
+            let pixels = imgData.data;
+
+            // Unsharp Mask Edge Enhancement
+            if (state.sharpness > 0) {
+                const amount = state.sharpness * 0.35;
+                const w = gridCols, h = gridRows;
+                const copy = new Uint8ClampedArray(pixels);
+                for (let y = 1; y < h - 1; y++) {
+                    for (let x = 1; x < w - 1; x++) {
+                        const idx = (y * w + x) * 4;
+                        for (let c = 0; c < 3; c++) {
+                            const center = copy[idx + c];
+                            const neighbors = (
+                                copy[((y - 1) * w + x) * 4 + c] +
+                                copy[((y + 1) * w + x) * 4 + c] +
+                                copy[(y * w + (x - 1)) * 4 + c] +
+                                copy[(y * w + (x + 1)) * 4 + c]
+                            ) * 0.25;
+                            pixels[idx + c] = Math.max(0, Math.min(255, center + (center - neighbors) * amount));
+                        }
+                    }
+                }
+            }
+
+            heightmapData = new Float32Array(gridCols * gridRows);
+            const contrastFactor = (259 * (state.contrast * 2.55 + 255)) / (255 * (259 - state.contrast * 2.55));
+            const brightnessOffset = state.brightness * 2.55;
+
+            const previewCanvas = document.getElementById('preview-2d-canvas');
+            previewCanvas.width = gridCols;
+            previewCanvas.height = gridRows;
+            const pCtx = previewCanvas.getContext('2d');
+            const previewImg = pCtx.createImageData(gridCols, gridRows);
+            const pData = previewImg.data;
+
+            for (let i = 0; i < gridCols * gridRows; i++) {
+                const idx = i * 4;
+                let lum = 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
+                lum = contrastFactor * (lum - 128) + 128 + brightnessOffset;
+                lum = Math.max(0, Math.min(255, lum));
+
+                const norm = lum / 255.0;
+                const tRatio = state.invert ? norm : (1.0 - norm);
+                heightmapData[i] = tRatio;
+
+                const g = Math.round((1.0 - tRatio) * 255);
+                pData[idx] = g;
+                pData[idx + 1] = g;
+                pData[idx + 2] = g;
+                pData[idx + 3] = 255;
+            }
+            pCtx.putImageData(previewImg, 0, 0);
+        }
+
+        // ============================================================================
+        // MODULAR 3D GEOMETRY BUILDER (5 FRAMES, 4 WALL MOUNTS, 4 DESK BASES)
+        // ============================================================================
+        function buildModularLithophaneSystem() {
+            if (!heightmapData) return null;
+
+            const totalW = state.widthMM;
+            const totalH = state.widthMM / state.aspectRatio;
+            const frameW = state.frameStyle === 'borderless' ? 3.2 : state.frameWidthMM;
+            const frameD = Math.max(state.frameDepthMM, state.maxThickMM + 3.0);
+            const minT = state.minThickMM;
+            const maxT = state.maxThickMM;
+
+            const cols = gridCols;
+            const rows = gridRows;
+
+            const halfW = totalW / 2;
+            const halfH = totalH / 2;
+            const innerHalfW = Math.max(10, halfW - frameW);
+            const innerHalfH = Math.max(10, halfH - frameW);
+
+            const backFrameZ = -(frameD - maxT);
+            const frontFrameBaseZ = maxT + 1.4;
+
+            // Helper to test if (x,y) is inside the photo window for the active frame style
+            function isInsidePhotoWindow(x, y) {
+                if (state.frameStyle === 'borderless') {
+                    return Math.abs(x) < (halfW - 1.8) && Math.abs(y) < (halfH - 1.8);
+                }
+                if (state.frameStyle === 'arch') {
+                    // Straight sides, arched top starting above y = 0
+                    if (Math.abs(x) >= innerHalfW || y <= -innerHalfH) return false;
+                    const archCenterY = innerHalfH - innerHalfW * 0.55;
+                    if (y > archCenterY) {
+                        const rx = innerHalfW;
+                        const ry = innerHalfH - archCenterY;
+                        const norm = (x * x) / (rx * rx) + ((y - archCenterY) * (y - archCenterY)) / (ry * ry);
+                        return norm < 1.0;
+                    }
+                    return true;
+                }
+                return Math.abs(x) < innerHalfW && Math.abs(y) < innerHalfH;
+            }
+
+            // Compute front surface Z for frame styles
+            function getFrameFrontZ(x, y) {
+                const distX = Math.max(0, Math.abs(x) - innerHalfW);
+                const distY = Math.max(0, Math.abs(y) - innerHalfH);
+                const d = Math.max(distX, distY);
+                const normD = Math.min(1.0, d / Math.max(1, frameW));
+
+                if (state.frameStyle === 'modern') {
+                    return maxT + 0.8 + Math.min(1.0, d / 2.0) * 1.4;
+                }
+                if (state.frameStyle === 'ornate') {
+                    // Classic stepped + wave molding
+                    const step1 = normD < 0.25 ? 1.0 : normD < 0.65 ? 2.4 : 1.6;
+                    const ridge = Math.sin(normD * Math.PI * 3) * 0.45;
+                    return maxT + 0.8 + step1 + ridge;
+                }
+                if (state.frameStyle === 'arch') {
+                    return maxT + 1.2 + Math.sin(normD * Math.PI) * 1.1;
+                }
+                if (state.frameStyle === 'swappable') {
+                    // Raised U-channel front retaining lip with open top entry
+                    if (y > innerHalfH && Math.abs(x) < innerHalfW + 2.2) {
+                        // Top slot opening!
+                        return maxT - 0.2;
+                    }
+                    return maxT + 2.2;
+                }
+                return maxT + 0.4;
+            }
+
+            // Triangle accumulator helper
+            function createTriBuffer() {
+                return { pos: [], glow: [] };
+            }
+            function pushTri(buf, ax, ay, az, bx, by, bz, cx, cy, cz, gA = 0, gB = 0, gC = 0) {
+                buf.pos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
+                buf.glow.push(gA, gB, gC);
+            }
+            function pushBox(buf, minX, maxX, minY, maxY, minZ, maxZ, glowVal = 0) {
+                const v = [
+                    [minX, minY, maxZ], [maxX, minY, maxZ], [maxX, maxY, maxZ], [minX, maxY, maxZ],
+                    [minX, minY, minZ], [maxX, minY, minZ], [maxX, maxY, minZ], [minX, maxY, minZ]
+                ];
+                const faces = [
+                    [0, 1, 2, 3], [5, 4, 7, 6], [3, 2, 6, 7],
+                    [4, 5, 1, 0], [4, 0, 3, 7], [1, 5, 6, 2]
+                ];
+                for (const [a, b, c, d] of faces) {
+                    pushTri(buf, v[a][0], v[a][1], v[a][2], v[b][0], v[b][1], v[b][2], v[c][0], v[c][1], v[c][2], glowVal, glowVal, glowVal);
+                    pushTri(buf, v[a][0], v[a][1], v[a][2], v[c][0], v[c][1], v[c][2], v[d][0], v[d][1], v[d][2], glowVal, glowVal, glowVal);
+                }
+            }
+
+            // Build the Lithophane / Integrated Grid Mesh
+            const mainBuf = createTriBuffer();
+            const insertBuf = createTriBuffer();
+
+            const numVerts = cols * rows;
+            const fVerts = new Float32Array(numVerts * 3);
+            const bVerts = new Float32Array(numVerts * 3);
+            const vGlow = new Float32Array(numVerts);
+
+            const isSwappable = (state.frameStyle === 'swappable');
+            // If swappable, the grid represents the removable Lithophane Insert Plate (with 2mm slide rails on left/right/bottom)
+            const plateHalfW = isSwappable ? (innerHalfW + 2.0) : halfW;
+            const plateHalfH = isSwappable ? (innerHalfH + 2.0) : halfH;
+
+            for (let r = 0; r < rows; r++) {
+                const v = r / (rows - 1);
+                const y = (0.5 - v) * (plateHalfH * 2);
+
+                for (let c = 0; c < cols; c++) {
+                    const u = c / (cols - 1);
+                    const x = (u - 0.5) * (plateHalfW * 2);
+
+                    const idx = r * cols + c;
+                    const vIdx = idx * 3;
+
+                    if (!isSwappable && !isInsidePhotoWindow(x, y)) {
+                        // Integrated Frame Border & Rear LED Lip
+                        fVerts[vIdx] = x;
+                        fVerts[vIdx + 1] = y;
+                        fVerts[vIdx + 2] = getFrameFrontZ(x, y);
+
+                        // Bottom center 8mm USB wire pass-through notch on rear cavity lip
+                        const isWireNotch = (y < -innerHalfH && Math.abs(x) < 4.5);
+                        bVerts[vIdx] = x;
+                        bVerts[vIdx + 1] = y;
+                        bVerts[vIdx + 2] = isWireNotch ? (backFrameZ + 5.0) : backFrameZ;
+
+                        vGlow[idx] = 0.0;
+                    } else {
+                        // Photo Relief Window
+                        const winW = isSwappable ? innerHalfW : (state.frameStyle === 'borderless' ? halfW - 1.8 : innerHalfW);
+                        const winH = isSwappable ? innerHalfH : (state.frameStyle === 'borderless' ? halfH - 1.8 : innerHalfH);
+
+                        const isInsertEdgeRail = isSwappable && (Math.abs(x) > innerHalfW || Math.abs(y) > innerHalfH);
+                        if (isInsertEdgeRail) {
+                            // 1.8mm flat sliding tongue on outer 2mm edge of swappable insert
+                            fVerts[vIdx] = x;
+                            fVerts[vIdx + 1] = y;
+                            fVerts[vIdx + 2] = 1.8;
+                            bVerts[vIdx] = x;
+                            bVerts[vIdx + 1] = y;
+                            bVerts[vIdx + 2] = 0.0;
+                            vGlow[idx] = 0.15;
+                        } else {
+                            const photoU = Math.min(1, Math.max(0, (x + winW) / (winW * 2)));
+                            const photoV = Math.min(1, Math.max(0, (winH - y) / (winH * 2)));
+                            const hmC = Math.min(cols - 1, Math.max(0, Math.round(photoU * (cols - 1))));
+                            const hmR = Math.min(rows - 1, Math.max(0, Math.round(photoV * (rows - 1))));
+                            const tRatio = heightmapData[hmR * cols + hmC];
+
+                            const zT = minT + tRatio * (maxT - minT);
+                            fVerts[vIdx] = x;
+                            fVerts[vIdx + 1] = y;
+                            fVerts[vIdx + 2] = zT;
+
+                            bVerts[vIdx] = x;
+                            bVerts[vIdx + 1] = y;
+                            bVerts[vIdx + 2] = 0.0;
+
+                            vGlow[idx] = Math.pow(1.0 - tRatio, 1.35);
+                        }
+                    }
+                }
+            }
+
+            const targetGridBuf = isSwappable ? insertBuf : mainBuf;
+
+            function addQuad(arr, i00, i10, i01, i11, flip) {
+                const a0 = i00 * 3, a1 = i10 * 3, a2 = i01 * 3, a3 = i11 * 3;
+                const g00 = vGlow[i00], g10 = vGlow[i10], g01 = vGlow[i01], g11 = vGlow[i11];
+                if (!flip) {
+                    pushTri(targetGridBuf, arr[a0], arr[a0+1], arr[a0+2], arr[a2], arr[a2+1], arr[a2+2], arr[a1], arr[a1+1], arr[a1+2], g00, g01, g10);
+                    pushTri(targetGridBuf, arr[a1], arr[a1+1], arr[a1+2], arr[a2], arr[a2+1], arr[a2+2], arr[a3], arr[a3+1], arr[a3+2], g10, g01, g11);
+                } else {
+                    pushTri(targetGridBuf, arr[a0], arr[a0+1], arr[a0+2], arr[a1], arr[a1+1], arr[a1+2], arr[a2], arr[a2+1], arr[a2+2], g00, g10, g01);
+                    pushTri(targetGridBuf, arr[a1], arr[a1+1], arr[a1+2], arr[a3], arr[a3+1], arr[a3+2], arr[a2], arr[a2+1], arr[a2+2], g10, g11, g01);
+                }
+            }
+
+            for (let r = 0; r < rows - 1; r++) {
+                for (let c = 0; c < cols - 1; c++) {
+                    const i00 = r * cols + c;
+                    const i10 = r * cols + (c + 1);
+                    const i01 = (r + 1) * cols + c;
+                    const i11 = (r + 1) * cols + (c + 1);
+                    addQuad(fVerts, i00, i10, i01, i11, false);
+                    addQuad(bVerts, i00, i10, i01, i11, true);
+                }
+            }
+
+            // Stitch outer edges of grid
+            for (let c = 0; c < cols - 1; c++) {
+                const i0 = c, i1 = c + 1;
+                const f0 = i0 * 3, f1 = i1 * 3, b0 = i0 * 3, b1 = i1 * 3;
+                pushTri(targetGridBuf, fVerts[f0], fVerts[f0+1], fVerts[f0+2], fVerts[f1], fVerts[f1+1], fVerts[f1+2], bVerts[b0], bVerts[b0+1], bVerts[b0+2]);
+                pushTri(targetGridBuf, fVerts[f1], fVerts[f1+1], fVerts[f1+2], bVerts[b1], bVerts[b1+1], bVerts[b1+2], bVerts[b0], bVerts[b0+1], bVerts[b0+2]);
+            }
+            const lastR = (rows - 1) * cols;
+            for (let c = 0; c < cols - 1; c++) {
+                const i0 = lastR + c, i1 = lastR + c + 1;
+                const f0 = i0 * 3, f1 = i1 * 3, b0 = i0 * 3, b1 = i1 * 3;
+                pushTri(targetGridBuf, fVerts[f0], fVerts[f0+1], fVerts[f0+2], bVerts[b0], bVerts[b0+1], bVerts[b0+2], fVerts[f1], fVerts[f1+1], fVerts[f1+2]);
+                pushTri(targetGridBuf, fVerts[f1], fVerts[f1+1], fVerts[f1+2], bVerts[b0], bVerts[b0+1], bVerts[b0+2], bVerts[b1], bVerts[b1+1], bVerts[b1+2]);
+            }
+            for (let r = 0; r < rows - 1; r++) {
+                const i0 = r * cols, i1 = (r + 1) * cols;
+                const f0 = i0 * 3, f1 = i1 * 3, b0 = i0 * 3, b1 = i1 * 3;
+                pushTri(targetGridBuf, fVerts[f0], fVerts[f0+1], fVerts[f0+2], bVerts[b0], bVerts[b0+1], bVerts[b0+2], fVerts[f1], fVerts[f1+1], fVerts[f1+2]);
+                pushTri(targetGridBuf, fVerts[f1], fVerts[f1+1], fVerts[f1+2], bVerts[b0], bVerts[b0+1], bVerts[b0+2], bVerts[b1], bVerts[b1+1], bVerts[b1+2]);
+            }
+            for (let r = 0; r < rows - 1; r++) {
+                const i0 = r * cols + (cols - 1), i1 = (r + 1) * cols + (cols - 1);
+                const f0 = i0 * 3, f1 = i1 * 3, b0 = i0 * 3, b1 = i1 * 3;
+                pushTri(targetGridBuf, fVerts[f0], fVerts[f0+1], fVerts[f0+2], fVerts[f1], fVerts[f1+1], fVerts[f1+2], bVerts[b0], bVerts[b0+1], bVerts[b0+2]);
+                pushTri(targetGridBuf, fVerts[f1], fVerts[f1+1], fVerts[f1+2], bVerts[b1], bVerts[b1+1], bVerts[b1+2], bVerts[b0], bVerts[b0+1], bVerts[b0+2]);
+            }
+
+            // If Swappable Slot Frame is selected, construct the U-Channel Slotted Frame Body in mainBuf
+            if (isSwappable) {
+                const slotFrontZ = maxT + 2.6;
+                const slotGapZMin = -0.3; // 0.3mm rear clearance
+                const slotGapZMax = 2.3;  // 2.6mm slot width for 1.8mm tongue
+                const railOuterX = innerHalfW + 2.6;
+                const railOuterY = innerHalfH + 2.6;
+
+                // 1. Rear LED Cavity Box Walls (Left, Right, Bottom, Top) behind slotGapZMin
+                pushBox(mainBuf, -halfW, -innerHalfW, -halfH, halfH, backFrameZ, slotGapZMin);
+                pushBox(mainBuf, innerHalfW, halfW, -halfH, halfH, backFrameZ, slotGapZMin);
+                pushBox(mainBuf, -innerHalfW, innerHalfW, -halfH, -innerHalfH, backFrameZ, slotGapZMin);
+                pushBox(mainBuf, -innerHalfW, innerHalfW, innerHalfH, halfH, backFrameZ, slotGapZMin);
+
+                // 2. Middle Spacer Layer (creates the U-channel groove on Left, Right, Bottom; open at Top)
+                pushBox(mainBuf, -halfW, -railOuterX, -halfH, halfH, slotGapZMin, slotGapZMax);
+                pushBox(mainBuf, railOuterX, halfW, -halfH, halfH, slotGapZMin, slotGapZMax);
+                pushBox(mainBuf, -railOuterX, railOuterX, -halfH, -railOuterY, slotGapZMin, slotGapZMax);
+
+                // 3. Front Bezel Lip (retains insert on Left, Right, Bottom, plus top corners)
+                pushBox(mainBuf, -halfW, -innerHalfW, -halfH, halfH, slotGapZMax, slotFrontZ);
+                pushBox(mainBuf, innerHalfW, halfW, -halfH, halfH, slotGapZMax, slotFrontZ);
+                pushBox(mainBuf, -innerHalfW, innerHalfW, -halfH, -innerHalfH, slotGapZMax, slotFrontZ);
+            }
+
+            // ========================================================================
+            // ADD WALL HANGING HARDWARE TO REAR OF FRAME (mainBuf)
+            // ========================================================================
+            if (state.wallMount === 'keyhole') {
+                // Rear top crossbar bridge with center keyhole slot
+                const khYMin = halfH - frameW - 6;
+                const khYMax = halfH;
+                const khZMin = backFrameZ;
+                const khZMax = backFrameZ + 4.5;
+                // Left & right shoulders of keyhole block
+                pushBox(mainBuf, -22, -4.5, khYMin, khYMax, khZMin, khZMax);
+                pushBox(mainBuf, 4.5, 22, khYMin, khYMax, khZMin, khZMax);
+                // Top & bottom bridges leaving a keyhole shaft + wider entry pocket
+                pushBox(mainBuf, -4.5, 4.5, khYMax - 2.5, khYMax, khZMin, khZMax);
+                pushBox(mainBuf, -4.5, 4.5, khYMin, khYMin + 2.5, khZMin, khZMax);
+                // Inner lip to catch screw head
+                pushBox(mainBuf, -4.5, -2.0, khYMin + 5.5, khYMax - 2.5, khZMin, khZMin + 2.0);
+                pushBox(mainBuf, 2.0, 4.5, khYMin + 5.5, khYMax - 2.5, khZMin, khZMin + 2.0);
+            } else if (state.wallMount === 'dring') {
+                // Left & Right Recessed Hook Brackets near top corners
+                const y0 = halfH - frameW - 10;
+                const y1 = halfH - 2;
+                const z0 = backFrameZ;
+                const z1 = backFrameZ + 4.2;
+                // Left bracket with notch
+                pushBox(mainBuf, -halfW, -halfW + frameW + 10, y1 - 3.5, y1, z0, z1);
+                pushBox(mainBuf, -halfW, -halfW + 4, y0, y1 - 3.5, z0, z1);
+                pushBox(mainBuf, -halfW + frameW + 6, -halfW + frameW + 10, y0, y1 - 3.5, z0, z1);
+                // Right bracket with notch
+                pushBox(mainBuf, halfW - frameW - 10, halfW, y1 - 3.5, y1, z0, z1);
+                pushBox(mainBuf, halfW - 4, halfW, y0, y1 - 3.5, z0, z1);
+                pushBox(mainBuf, halfW - frameW - 10, halfW - frameW - 6, y0, y1 - 3.5, z0, z1);
+            } else if (state.wallMount === 'loop') {
+                // Top Center Printable Hanging Eyelet Loop
+                const tabW = 24, tabH = 11, wallT = 3.6;
+                const z0 = backFrameZ, z1 = backFrameZ + 4.5;
+                pushBox(mainBuf, -tabW/2, -tabW/2 + wallT, halfH, halfH + tabH, z0, z1);
+                pushBox(mainBuf, tabW/2 - wallT, tabW/2, halfH, halfH + tabH, z0, z1);
+                pushBox(mainBuf, -tabW/2, tabW/2, halfH + tabH - wallT, halfH + tabH, z0, z1);
+            }
+
+            // ========================================================================
+            // ADD DESK BASE / STAND HARDWARE TO BOTTOM OF FRAME (mainBuf)
+            // ========================================================================
+            if (state.deskBase === 'strut') {
+                // Integrated Angled Easel Back-Strut with bottom stabilizer bar
+                const strutW = Math.min(28, totalW * 0.22);
+                const strutDepth = 38;
+                // Bottom horizontal support fin
+                pushBox(mainBuf, -strutW/2, strutW/2, -halfH, -halfH + 4.5, backFrameZ - strutDepth, backFrameZ);
+                // Diagonal brace steps connecting rear frame to strut tip
+                const steps = 8;
+                for (let s = 0; s < steps; s++) {
+                    const t0 = s / steps;
+                    const t1 = (s + 1) / steps;
+                    const yMin = -halfH + t0 * (totalH * 0.42);
+                    const yMax = -halfH + t1 * (totalH * 0.42) + 2.0;
+                    const zEnd = backFrameZ - (1.0 - t0) * strutDepth;
+                    pushBox(mainBuf, -strutW/2, strutW/2, yMin, yMax, zEnd, zEnd + 5.5);
+                }
+            } else if (state.deskBase === 'pedestal') {
+                // Wide Stability Base Pedestal with center wire channel
+                const pedW = totalW * 0.86;
+                const pedH = 5.5;
+                const pedZMin = backFrameZ - 22;
+                const pedZMax = frontFrameBaseZ + 8;
+                // Left & right halves of pedestal leaving an 8mm center wire routing channel
+                pushBox(mainBuf, -pedW/2, -4.5, -halfH - pedH, -halfH, pedZMin, pedZMax);
+                pushBox(mainBuf, 4.5, pedW/2, -halfH - pedH, -halfH, pedZMin, pedZMax);
+                // Top bridge connecting pedestal to bottom of frame
+                pushBox(mainBuf, -4.5, 4.5, -halfH - 2.0, -halfH, pedZMin + 8, pedZMax);
+            } else if (state.deskBase === 'feet') {
+                // Detachable / Integrated Dual Corner Desk Feet
+                const footW = Math.min(18, totalW * 0.12);
+                const footH = Math.max(6, frameW * 0.8);
+                const footZMin = backFrameZ - 26;
+                const footZMax = frontFrameBaseZ + 5;
+                const leftX = -halfW + frameW;
+                const rightX = halfW - frameW - footW;
+                pushBox(mainBuf, leftX, leftX + footW, -halfH, -halfH + footH, footZMin, footZMax);
+                pushBox(mainBuf, rightX, rightX + footW, -halfH, -halfH + footH, footZMin, footZMax);
+            }
+
+            // Convert buffers to Three.js BufferGeometries
+            const frameGeo = new THREE.BufferGeometry();
+            frameGeo.setAttribute('position', new THREE.Float32BufferAttribute(mainBuf.pos, 3));
+            frameGeo.setAttribute('aGlow', new THREE.Float32BufferAttribute(mainBuf.glow, 1));
+            frameGeo.computeVertexNormals();
+
+            let insertGeo = null;
+            if (isSwappable) {
+                insertGeo = new THREE.BufferGeometry();
+                insertGeo.setAttribute('position', new THREE.Float32BufferAttribute(insertBuf.pos, 3));
+                insertGeo.setAttribute('aGlow', new THREE.Float32BufferAttribute(insertBuf.glow, 1));
+                insertGeo.computeVertexNormals();
+            }
+
+            // Update Header Readout
+            const totalTris = (mainBuf.pos.length + insertBuf.pos.length) / 9;
+            document.getElementById('header-dim-readout').textContent = `${totalW.toFixed(1)} × ${totalH.toFixed(1)} × ${frameD.toFixed(1)} mm`;
+
+            const areaCm2 = (totalW * totalH) / 100;
+            const avgThickCm = ((minT + maxT) * 0.5) / 10;
+            const frameVolCm3 = ((totalW * 2 + totalH * 2) * frameW * frameD) / 1000;
+            const grams = Math.round((areaCm2 * avgThickCm + frameVolCm3 * 0.6) * 1.24);
+            const hours = Math.floor(grams / 13);
+            const mins = Math.round(((grams / 13) - hours) * 60);
+            document.getElementById('header-print-readout').textContent = `~${hours}h ${mins}m • ${grams}g PLA`;
+
+            return { frameGeo, insertGeo, mainBuf, insertBuf };
+        }
+
+        // ============================================================================
+        // THREE.JS SCENE & SHADER INITIALIZATION
+        // ============================================================================
+        function initThreeViewport() {
+            const container = document.getElementById('viewport-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x080b10);
+
+            camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 1, 2200);
+            camera.position.set(0, 15, 245);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.06;
+            controls.maxDistance = 650;
+            controls.minDistance = 45;
+
+            // Creality CR-10 SE 220x220mm Build Plate Grid Reference
+            const gridHelper = new THREE.GridHelper(220, 22, 0xf97316, 0x1e2738);
+            gridHelper.position.y = -75;
+            scene.add(gridHelper);
+
+            ambientLight = new THREE.AmbientLight(0xdbeafe, 0.35);
+            scene.add(ambientLight);
+
+            frontDirectionalLight = new THREE.DirectionalLight(0xffffff, 0.55);
+            frontDirectionalLight.position.set(90, 130, 190);
+            scene.add(frontDirectionalLight);
+
+            const backLight = new THREE.DirectionalLight(0x94a3b8, 0.45);
+            backLight.position.set(-90, -50, -180);
+            scene.add(backLight);
+
+            backPointLight = new THREE.PointLight(0xffb454, 1.6, 380);
+            backPointLight.position.set(0, 0, -32);
+            scene.add(backPointLight);
+
+            const bulbGeo = new THREE.SphereGeometry(5, 16, 16);
+            const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffcf70 });
+            ledBulbHelper = new THREE.Mesh(bulbGeo, bulbMat);
+            ledBulbHelper.position.copy(backPointLight.position);
+            scene.add(ledBulbHelper);
+
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+
+            backlitMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    uLightIntensity: { value: state.lightIntensity },
+                    uLedColor: { value: new THREE.Color(0xffb85c) },
+                    uPlaBaseColor: { value: new THREE.Color(0x282523) },
+                    uFrontLightDir: { value: new THREE.Vector3(0.4, 0.6, 0.8).normalize() }
+                },
+                vertexShader: `
+                    attribute float aGlow;
+                    varying float vGlow;
+                    varying vec3 vNormal;
+                    void main() {
+                        vGlow = aGlow;
+                        vNormal = normalize(normalMatrix * normal);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float uLightIntensity;
+                    uniform vec3 uLedColor;
+                    uniform vec3 uPlaBaseColor;
+                    uniform vec3 uFrontLightDir;
+                    varying float vGlow;
+                    varying vec3 vNormal;
+                    void main() {
+                        vec3 normal = normalize(vNormal);
+                        float diff = max(dot(normal, uFrontLightDir), 0.0);
+                        vec3 surfaceColor = uPlaBaseColor + vec3(0.18) * diff;
+                        float transmitted = pow(clamp(vGlow, 0.0, 1.0), 1.15) * uLightIntensity;
+                        vec3 glowColor = uLedColor * transmitted * 1.5;
+                        vec3 hotCore = vec3(1.0, 0.97, 0.90) * pow(clamp(vGlow, 0.0, 1.0), 3.0) * (uLightIntensity * 0.6);
+                        gl_FragColor = vec4(surfaceColor + glowColor + hotCore, 1.0);
+                    }
+                `
+            });
+
+            unlitMaterial = new THREE.MeshStandardMaterial({
+                color: 0xf1f5f9,
+                roughness: 0.42,
+                metalness: 0.05
+            });
+
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+
+            animate();
+        }
+
+        function updateViewportLighting() {
+            const w = state.lightWarmth / 100;
+            const ledColor = new THREE.Color(1.0, 0.95 - w * 0.24, 0.98 - w * 0.58);
+
+            if (backlitMaterial) {
+                backlitMaterial.uniforms.uLightIntensity.value = state.lightIntensity;
+                backlitMaterial.uniforms.uLedColor.value.copy(ledColor);
+            }
+            if (ledBulbHelper) {
+                ledBulbHelper.material.color.copy(ledColor);
+                ledBulbHelper.visible = (state.viewMode === 'backlit');
+            }
+
+            const activeMat = state.viewMode === 'backlit' ? backlitMaterial : unlitMaterial;
+            if (frameMesh) frameMesh.material = activeMat;
+            if (insertMesh) insertMesh.material = activeMat;
+
+            ambientLight.intensity = state.viewMode === 'backlit' ? 0.28 : 0.58;
+            frontDirectionalLight.intensity = state.viewMode === 'backlit' ? 0.38 : 1.1;
+        }
+
+        function rebuildSceneGeometry() {
+            processImageToHeightmap();
+            const built = buildModularLithophaneSystem();
+            if (!built) return;
+
+            while (mainGroup.children.length > 0) {
+                const child = mainGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                mainGroup.remove(child);
+            }
+
+            const activeMat = state.viewMode === 'backlit' ? backlitMaterial : unlitMaterial;
+            frameMesh = new THREE.Mesh(built.frameGeo, activeMat);
+            mainGroup.add(frameMesh);
+
+            insertOnlyGeometryForExport = built.insertGeo;
+
+            if (built.insertGeo) {
+                insertMesh = new THREE.Mesh(built.insertGeo, activeMat);
+                // If user toggled "Slide Insert Out", offset the insert upward to demonstrate the top slot
+                const totalH = state.widthMM / state.aspectRatio;
+                insertMesh.position.y = state.slideInsertOut ? (totalH * 0.42) : 0;
+                mainGroup.add(insertMesh);
+
+                // Toggle visibility based on Swappable Part Mode
+                frameMesh.visible = (state.swapPartMode !== 'insert');
+                insertMesh.visible = (state.swapPartMode !== 'frame');
+            } else {
+                insertMesh = null;
+            }
+
+            // Prepare export geometry based on mode
+            if (state.frameStyle === 'swappable') {
+                if (state.swapPartMode === 'frame') {
+                    combinedGeometryForExport = built.frameGeo;
+                } else if (state.swapPartMode === 'insert') {
+                    combinedGeometryForExport = built.insertGeo;
+                } else {
+                    // Merge both buffers for combined export
+                    const mergedPos = new Float32Array(built.mainBuf.pos.length + built.insertBuf.pos.length);
+                    mergedPos.set(built.mainBuf.pos, 0);
+                    mergedPos.set(built.insertBuf.pos, built.mainBuf.pos.length);
+                    const mergedGeo = new THREE.BufferGeometry();
+                    mergedGeo.setAttribute('position', new THREE.BufferAttribute(mergedPos, 3));
+                    combinedGeometryForExport = mergedGeo;
+                }
+            } else {
+                combinedGeometryForExport = built.frameGeo;
+            }
+
+            const totalH = state.widthMM / state.aspectRatio;
+            const grid = scene.children.find(c => c.type === 'GridHelper');
+            if (grid) grid.position.y = -(totalH / 2) - (state.deskBase === 'pedestal' ? 5.5 : 0);
+
+            updateViewportLighting();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls) controls.update();
+            if (renderer && scene && camera) renderer.render(scene, camera);
+        }
+
+        // ============================================================================
+        // BINARY STL EXPORTER
+        // ============================================================================
+        function exportGeometryToBinarySTL(geometry, filenameLabel) {
+            if (!geometry) return;
+
+            const posAttr = geometry.getAttribute('position');
+            const numTriangles = posAttr.count / 3;
+            const bufferSize = 84 + numTriangles * 50;
+            const arrayBuffer = new ArrayBuffer(bufferSize);
+            const dataView = new DataView(arrayBuffer);
+
+            const headerText = `LithoForge CR-10 SE STL (${state.frameStyle}, ${state.widthMM}mm)`;
+            for (let i = 0; i < 80; i++) {
+                dataView.setUint8(i, i < headerText.length ? headerText.charCodeAt(i) : 32);
+            }
+            dataView.setUint32(80, numTriangles, true);
+
+            let offset = 84;
+            const pA = new THREE.Vector3(), pB = new THREE.Vector3(), pC = new THREE.Vector3();
+            const cb = new THREE.Vector3(), ab = new THREE.Vector3();
+            const halfH = (state.widthMM / state.aspectRatio) / 2;
+
+            for (let i = 0; i < numTriangles; i++) {
+                const i3 = i * 3;
+                // Rotate so Z is up (standing vertically on the Creality CR-10 SE build plate)
+                pA.set(posAttr.getX(i3),     -posAttr.getZ(i3),     posAttr.getY(i3) + halfH);
+                pB.set(posAttr.getX(i3 + 1), -posAttr.getZ(i3 + 1), posAttr.getY(i3 + 1) + halfH);
+                pC.set(posAttr.getX(i3 + 2), -posAttr.getZ(i3 + 2), posAttr.getY(i3 + 2) + halfH);
+
+                cb.subVectors(pC, pB);
+                ab.subVectors(pA, pB);
+                cb.cross(ab).normalize();
+
+                dataView.setFloat32(offset, cb.x, true); offset += 4;
+                dataView.setFloat32(offset, cb.y, true); offset += 4;
+                dataView.setFloat32(offset, cb.z, true); offset += 4;
+
+                dataView.setFloat32(offset, pA.x, true); offset += 4;
+                dataView.setFloat32(offset, pA.y, true); offset += 4;
+                dataView.setFloat32(offset, pA.z, true); offset += 4;
+
+                dataView.setFloat32(offset, pB.x, true); offset += 4;
+                dataView.setFloat32(offset, pB.y, true); offset += 4;
+                dataView.setFloat32(offset, pB.z, true); offset += 4;
+
+                dataView.setFloat32(offset, pC.x, true); offset += 4;
+                dataView.setFloat32(offset, pC.y, true); offset += 4;
+                dataView.setFloat32(offset, pC.z, true); offset += 4;
+
+                dataView.setUint16(offset, 0, true); offset += 2;
+            }
+
+            const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filenameLabel;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('Watertight Binary .STL Downloaded', `${filenameLabel} (${numTriangles.toLocaleString()} triangles)`);
+        }
+
+        function showToast(title, desc) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-desc').textContent = desc;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 4000);
+        }
+
+        // ============================================================================
+        // UI EVENT BINDINGS
+        // ============================================================================
+        let rebuildTimer = null;
+        function scheduleRebuild() {
+            if (rebuildTimer) clearTimeout(rebuildTimer);
+            rebuildTimer = setTimeout(() => rebuildSceneGeometry(), 30);
+        }
+
+        function setupEvents() {
+            // File upload & Drag-drop
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-input');
+
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-orange-500'); });
+            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-orange-500'));
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-orange-500');
+                if (e.dataTransfer.files?.[0]) handleImageFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files?.[0]) handleImageFile(e.target.files[0]);
+            });
+
+            function handleImageFile(file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        sourceImage = img;
+                        rebuildSceneGeometry();
+                        showToast('New Picture Insert Loaded', '3D lithophane relief updated automatically.');
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // Sample Presets
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('border-orange-500/50'));
+                    btn.classList.add('border-orange-500/50');
+                    sourceImage = createPresetSampleCanvas(btn.dataset.preset);
+                    rebuildSceneGeometry();
+                });
+            });
+
+            // Frame Style Selector
+            const frameNames = {
+                modern: 'Modern Flat',
+                ornate: 'Ornate Stepped',
+                arch: 'Rounded Arch',
+                borderless: 'Borderless',
+                swappable: 'Swappable Slot Frame'
+            };
+            document.querySelectorAll('#frame-style-group .option-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('#frame-style-group .option-card').forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    state.frameStyle = card.dataset.frame;
+                    document.getElementById('badge-frame').textContent = `Frame: ${frameNames[state.frameStyle]}`;
+
+                    const isSwap = state.frameStyle === 'swappable';
+                    document.getElementById('swappable-subpanel').classList.toggle('hidden', !isSwap);
+                    document.getElementById('btn-slide-insert').classList.toggle('hidden', !isSwap);
+                    document.getElementById('btn-slide-insert').classList.toggle('flex', isSwap);
+                    document.getElementById('btn-export-insert-only').classList.toggle('hidden', !isSwap);
+                    document.getElementById('btn-export-insert-only').classList.toggle('flex', isSwap);
+
+                    scheduleRebuild();
+                });
+            });
+
+            // Swappable Part Mode Selector
+            document.querySelectorAll('.swapmode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.swapmode-btn').forEach(b => {
+                        b.className = 'swapmode-btn bg-studio-900 text-gray-300 hover:text-white font-medium text-[10px] py-1.5 px-2 rounded border border-studio-700 transition';
+                    });
+                    btn.className = 'swapmode-btn bg-amber-500 text-slate-950 font-semibold text-[10px] py-1.5 px-2 rounded transition';
+                    state.swapPartMode = btn.dataset.swapmode;
+
+                    const lbl = document.getElementById('export-btn-label');
+                    if (state.swapPartMode === 'frame') lbl.textContent = 'Download Slotted Frame .STL';
+                    else if (state.swapPartMode === 'insert') lbl.textContent = 'Download Picture Insert .STL';
+                    else lbl.textContent = 'Download Complete Set .STL';
+
+                    scheduleRebuild();
+                });
+            });
+
+            // Slide Insert Out Interactive Preview
+            document.getElementById('btn-slide-insert').addEventListener('click', () => {
+                state.slideInsertOut = !state.slideInsertOut;
+                document.getElementById('slide-insert-label').textContent = state.slideInsertOut ? 'Slide Insert In' : 'Slide Insert Out';
+                if (insertMesh) {
+                    const totalH = state.widthMM / state.aspectRatio;
+                    insertMesh.position.y = state.slideInsertOut ? (totalH * 0.42) : 0;
+                }
+            });
+
+            // Wall Mount Selector
+            const wallNames = { none: 'None', keyhole: 'Keyhole Slot', dring: 'Dual D-Ring', loop: 'Top Loop' };
+            document.querySelectorAll('#wall-mount-group .option-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('#wall-mount-group .option-card').forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    state.wallMount = card.dataset.wall;
+                    document.getElementById('badge-wall').textContent = `Wall: ${wallNames[state.wallMount]}`;
+                    scheduleRebuild();
+                });
+            });
+
+            // Desk Base Selector
+            const deskNames = { none: 'None', strut: 'Angled Back-Strut', pedestal: 'Wide Pedestal', feet: 'Dual Feet' };
+            document.querySelectorAll('#desk-base-group .option-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('#desk-base-group .option-card').forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    state.deskBase = card.dataset.desk;
+                    document.getElementById('badge-desk').textContent = `Desk: ${deskNames[state.deskBase]}`;
+                    scheduleRebuild();
+                });
+            });
+
+            // Image Sliders
+            document.getElementById('param-sharpness').addEventListener('input', (e) => {
+                state.sharpness = parseInt(e.target.value, 10);
+                const names = ['Off', 'Low', 'High', 'Very High', 'Ultra'];
+                document.getElementById('val-sharpness').textContent = `Level ${state.sharpness} (${names[state.sharpness]})`;
+                scheduleRebuild();
+            });
+            document.getElementById('param-contrast').addEventListener('input', (e) => {
+                state.contrast = parseInt(e.target.value, 10);
+                document.getElementById('val-contrast').textContent = `${state.contrast > 0 ? '+' : ''}${state.contrast}%`;
+                scheduleRebuild();
+            });
+            document.getElementById('param-brightness').addEventListener('input', (e) => {
+                state.brightness = parseInt(e.target.value, 10);
+                document.getElementById('val-brightness').textContent = `${state.brightness > 0 ? '+' : ''}${state.brightness}%`;
+                scheduleRebuild();
+            });
+            document.getElementById('param-blur').addEventListener('input', (e) => {
+                state.blur = parseFloat(e.target.value);
+                document.getElementById('val-blur').textContent = `${state.blur.toFixed(1)} px`;
+                scheduleRebuild();
+            });
+            document.getElementById('btn-toggle-invert').addEventListener('click', () => {
+                state.invert = !state.invert;
+                document.getElementById('invert-label').textContent = state.invert ? 'Negative' : 'Positive (Std)';
+                scheduleRebuild();
+            });
+            document.getElementById('btn-toggle-mirror').addEventListener('click', () => {
+                state.mirror = !state.mirror;
+                scheduleRebuild();
+            });
+            document.getElementById('btn-reset-image').addEventListener('click', () => {
+                state.sharpness = 2; state.contrast = 25; state.brightness = 0; state.blur = 0.8; state.invert = false; state.mirror = false;
+                document.getElementById('param-sharpness').value = 2;
+                document.getElementById('val-sharpness').textContent = 'Level 2 (High)';
+                document.getElementById('param-contrast').value = 25;
+                document.getElementById('val-contrast').textContent = '+25%';
+                document.getElementById('param-brightness').value = 0;
+                document.getElementById('val-brightness').textContent = '0%';
+                document.getElementById('param-blur').value = 0.8;
+                document.getElementById('val-blur').textContent = '0.8 px';
+                scheduleRebuild();
+            });
+
+            // Dimension Sliders
+            document.getElementById('param-width').addEventListener('input', (e) => {
+                state.widthMM = parseFloat(e.target.value);
+                document.getElementById('val-width').textContent = `${state.widthMM} mm`;
+                scheduleRebuild();
+            });
+            document.getElementById('param-min-thick').addEventListener('input', (e) => {
+                state.minThickMM = parseFloat(e.target.value);
+                document.getElementById('val-min-thick').textContent = `${state.minThickMM.toFixed(1)} mm`;
+                scheduleRebuild();
+            });
+            document.getElementById('param-max-thick').addEventListener('input', (e) => {
+                state.maxThickMM = parseFloat(e.target.value);
+                document.getElementById('val-max-thick').textContent = `${state.maxThickMM.toFixed(1)} mm`;
+                scheduleRebuild();
+            });
+            document.getElementById('param-frame-width').addEventListener('input', (e) => {
+                state.frameWidthMM = parseFloat(e.target.value);
+                document.getElementById('val-frame-width').textContent = `${state.frameWidthMM} mm`;
+                scheduleRebuild();
+            });
+            document.getElementById('param-frame-depth').addEventListener('input', (e) => {
+                state.frameDepthMM = parseFloat(e.target.value);
+                document.getElementById('val-frame-depth').textContent = `${state.frameDepthMM} mm`;
+                scheduleRebuild();
+            });
+            document.getElementById('param-res').addEventListener('input', (e) => {
+                state.gridRes = parseInt(e.target.value, 10);
+                const rRows = Math.round(state.gridRes / state.aspectRatio);
+                document.getElementById('val-res').textContent = `${state.gridRes}×${rRows}`;
+                scheduleRebuild();
+            });
+
+            // Viewport Mode & Camera Buttons
+            const btnBacklit = document.getElementById('mode-backlit');
+            const btnUnlit = document.getElementById('mode-unlit');
+            btnBacklit.addEventListener('click', () => {
+                state.viewMode = 'backlit';
+                btnBacklit.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-amber-500 text-slate-950 shadow transition';
+                btnUnlit.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 hover:text-white transition';
+                updateViewportLighting();
+            });
+            btnUnlit.addEventListener('click', () => {
+                state.viewMode = 'unlit';
+                btnUnlit.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-orange-500 text-slate-950 shadow transition';
+                btnBacklit.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 hover:text-white transition';
+                updateViewportLighting();
+            });
+
+            document.getElementById('param-light-intensity').addEventListener('input', (e) => {
+                const pct = parseInt(e.target.value, 10);
+                state.lightIntensity = pct / 100;
+                document.getElementById('val-light-intensity').textContent = `${pct}%`;
+                if (state.viewMode !== 'backlit') btnBacklit.click();
+                updateViewportLighting();
+            });
+            document.getElementById('param-light-warmth').addEventListener('input', (e) => {
+                state.lightWarmth = parseInt(e.target.value, 10);
+                const k = Math.round(5500 - (state.lightWarmth / 100) * 2800);
+                document.getElementById('val-light-warmth').textContent = `${k}K Warm`;
+                if (state.viewMode !== 'backlit') btnBacklit.click();
+                updateViewportLighting();
+            });
+
+            document.getElementById('cam-front').addEventListener('click', () => { camera.position.set(0, 0, 240); controls.target.set(0, 0, 0); });
+            document.getElementById('cam-iso').addEventListener('click', () => { camera.position.set(125, 70, 205); controls.target.set(0, 0, 0); });
+            document.getElementById('cam-back').addEventListener('click', () => {
+                // Switch to Raw PLA view automatically when inspecting rear mounts & LED cavity so details are super clear
+                btnUnlit.click();
+                camera.position.set(-60, 45, -215);
+                controls.target.set(0, 0, 0);
+            });
+
+            // STL Export Triggers
+            document.getElementById('btn-export-stl').addEventListener('click', () => {
+                const fn = `lithoforge_${state.frameStyle}_${state.wallMount}_${state.deskBase}_${state.widthMM}mm.stl`;
+                exportGeometryToBinarySTL(combinedGeometryForExport, fn);
+            });
+            document.getElementById('btn-export-insert-only').addEventListener('click', () => {
+                const fn = `lithoforge_swappable_insert_${state.widthMM}mm.stl`;
+                exportGeometryToBinarySTL(insertOnlyGeometryForExport, fn);
+            });
+
+            // Modal
+            const modal = document.getElementById('slicer-modal');
+            document.getElementById('btn-slicer-guide').addEventListener('click', () => { modal.classList.remove('hidden'); modal.classList.add('flex'); });
+            document.getElementById('close-slicer-modal').addEventListener('click', () => { modal.classList.add('hidden'); modal.classList.remove('flex'); });
+            document.getElementById('close-slicer-modal-btn').addEventListener('click', () => { modal.classList.add('hidden'); modal.classList.remove('flex'); });
+        }
+
+        window.onload = function() {
+            sourceImage = createPresetSampleCanvas('family');
+            initThreeViewport();
+            setupEvents();
+            rebuildSceneGeometry();
+        };
+    </script>
+</body>
+</html>
