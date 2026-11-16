@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Saravanabhava Yantra 3D STL Generator & Slicer Studio</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+            tamil: ['Noto Sans Tamil', 'Noto Serif Tamil', 'sans-serif']
+          },
+          colors: {
+            workbench: {
+              950: '#090b0e',
+              900: '#101318',
+              850: '#161b22',
+              800: '#1d242e',
+              700: '#2a3441',
+            },
+            gold: {
+              400: '#f5c451',
+              500: '#e0a82e',
+              600: '#b88319',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Fonts: Inter, JetBrains Mono & Noto Sans/Serif Tamil -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Tamil:wght@600;700;800&family=Noto+Serif+Tamil:wght@700&display=swap" rel="stylesheet" />
+
+  <!-- Import Map for Three.js ES Modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      background-color: #090b0e;
+      color: #e5e7eb;
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom subtle range slider styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #2a3441;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #f5c451;
+      margin-top: -5px;
+      box-shadow: 0 0 0 3px rgba(245, 196, 81, 0.2);
+      transition: transform 0.12s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    /* Custom scrollbar for sidebar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #101318;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a3441;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3d4b5e;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col lg:h-screen lg:overflow-hidden selection:bg-gold-500/30 selection:text-gold-400">
+
+  <!-- Top Studio Header -->
+  <header class="bg-workbench-900 border-b border-workbench-700/80 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 z-20">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-workbench-950 font-bold text-lg shadow-lg shadow-gold-500/20">
+        ॐ
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">Saravanabhava Yantra 3D CAD</h1>
+          <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            Single-Extruder Z-Swap Ready
+          </span>
+        </div>
+        <p class="text-xs text-gray-400">Parametric 2-Tone STL Generator & Creality CR-10 SE Slicer Guide</p>
+      </div>
+    </div>
+
+    <!-- Primary STL Export Actions -->
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="btnDownloadBase" class="px-3 py-2 rounded-lg text-xs font-medium bg-workbench-800 hover:bg-workbench-700 text-gray-200 border border-workbench-700 transition flex items-center gap-1.5" title="Export only the base plate for multi-part or inlay printing">
+        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Base STL
+      </button>
+      <button id="btnDownloadRelief" class="px-3 py-2 rounded-lg text-xs font-medium bg-workbench-800 hover:bg-workbench-700 text-gray-200 border border-workbench-700 transition flex items-center gap-1.5" title="Export only the raised stars & Tamil letters">
+        <svg class="w-3.5 h-3.5 text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Relief STL
+      </button>
+      <button id="btnDownloadCombined" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-300 hover:to-gold-400 text-workbench-950 shadow-lg shadow-gold-500/20 transition flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Download Combined STL
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Split -->
+  <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+    <!-- Left Control Panel (Parameters & Slicer Settings) -->
+    <aside class="w-full lg:w-[390px] xl:w-[420px] bg-workbench-900 border-b lg:border-b-0 lg:border-r border-workbench-700/80 flex flex-col shrink-0 lg:h-full overflow-hidden">
+      <!-- Navigation Tabs -->
+      <div class="grid grid-cols-3 border-b border-workbench-700/80 bg-workbench-950/60 p-1 gap-1 shrink-0">
+        <button data-tab="geometry" class="tab-btn active py-2 px-2 rounded-lg text-xs font-semibold bg-workbench-800 text-gold-400 shadow-sm transition">
+          1. Plaque & Hook
+        </button>
+        <button data-tab="yantra" class="tab-btn py-2 px-2 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 transition">
+          2. Stars & Tamil
+        </button>
+        <button data-tab="slicer" class="tab-btn py-2 px-2 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 transition">
+          3. Slicer & G-Code
+        </button>
+      </div>
+
+      <!-- Scrollable Tab Body -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-5">
+
+        <!-- TAB 1: PLAQUE & HOOK GEOMETRY -->
+        <div id="tab-geometry" class="tab-panel space-y-5">
+          <!-- Print Mode Selector (2-Color Relief vs Lithophane) -->
+          <div class="bg-workbench-850 rounded-xl p-3.5 border border-gold-500/40 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-gold-400">Print Style Mode</span>
+              <span id="modeBadge" class="text-[10px] px-2 py-0.5 rounded bg-gold-500/15 text-gold-400 font-mono">2-Color Z-Swap</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button data-mode="relief" class="mode-btn active py-2 px-2.5 rounded-lg text-xs font-semibold border border-gold-500/70 bg-workbench-800 text-gold-400 transition">
+                2-Color Raised Relief
+              </button>
+              <button data-mode="lithophane" class="mode-btn py-2 px-2.5 rounded-lg text-xs font-semibold border border-workbench-700 bg-workbench-800/50 text-gray-300 hover:bg-workbench-800 transition">
+                Lithophane (Backlit)
+              </button>
+            </div>
+            <p id="modeDescription" class="text-[11px] text-gray-400 leading-relaxed">
+              Extrudes crisp flat-topped stars & Tamil letters for a mid-print filament color change.
+            </p>
+          </div>
+
+          <!-- Color Presets (Shown in 2-Color Relief Mode) -->
+          <div id="colorPresetsCard" class="bg-workbench-850 rounded-xl p-3.5 border border-workbench-700/70 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Filament Color Preview</span>
+              <span class="text-[11px] text-gray-500">Visual Only</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <button data-preset="marble-gold" class="preset-btn p-2 rounded-lg border border-gold-500/60 bg-workbench-800 text-left transition">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#f2efe9] border border-gray-400"></span>
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#e5b53b]"></span>
+                </div>
+                <div class="text-[11px] font-medium text-gray-200">Marble + Gold</div>
+              </button>
+              <button data-preset="black-gold" class="preset-btn p-2 rounded-lg border border-workbench-700 bg-workbench-800/50 hover:bg-workbench-800 text-left transition">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#1f2328] border border-gray-600"></span>
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#f5c451]"></span>
+                </div>
+                <div class="text-[11px] font-medium text-gray-200">Matte + Silk</div>
+              </button>
+              <button data-preset="maroon-cream" class="preset-btn p-2 rounded-lg border border-workbench-700 bg-workbench-800/50 hover:bg-workbench-800 text-left transition">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#6b1d26]"></span>
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#f7ebd2]"></span>
+                </div>
+                <div class="text-[11px] font-medium text-gray-200">Kumkum + Ivory</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Lithophane Settings Card (Shown in Lithophane Mode) -->
+          <div id="lithoControlsCard" class="hidden bg-workbench-850 rounded-xl p-3.5 border border-amber-500/40 space-y-3.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Lithophane Light Transmission</span>
+              <label class="flex items-center gap-1.5 text-xs text-gray-200 cursor-pointer">
+                <input id="lithoBacklight" type="checkbox" checked class="rounded accent-amber-400" />
+                <span>LED Backlight Sim</span>
+              </label>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <label for="lithoMinThick" class="text-gray-300">Min Thickness (Brightest Glow)</label>
+                <span id="valLithoMinThick" class="font-mono text-amber-400 font-semibold">0.8 mm</span>
+              </div>
+              <input id="lithoMinThick" type="range" min="0.4" max="1.6" step="0.1" value="0.8" class="w-full" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <label for="lithoMaxThick" class="text-gray-300">Max Thickness (Darkest Shade)</label>
+                <span id="valLithoMaxThick" class="font-mono text-amber-400 font-semibold">3.2 mm</span>
+              </div>
+              <input id="lithoMaxThick" type="range" min="2.0" max="5.0" step="0.2" value="3.2" class="w-full" />
+            </div>
+
+            <div class="flex items-center justify-between pt-1 border-t border-workbench-700/60">
+              <div>
+                <label for="lithoInvert" class="text-xs text-gray-200 font-medium block">Bright Glowing Stars & Letters</label>
+                <span class="text-[10px] text-gray-400">Thinner Yantra lines let warm LED light shine through</span>
+              </div>
+              <input id="lithoInvert" type="checkbox" checked class="w-4 h-4 rounded accent-amber-400 cursor-pointer" />
+            </div>
+
+            <!-- Back Lightbox / LED Holder Controls -->
+            <div class="pt-2.5 border-t border-workbench-700/60 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <label for="lithoLightbox" class="text-xs text-amber-300 font-semibold block">Minimalist LED Holder Frame</label>
+                  <span class="text-[10px] text-gray-400">Ultra-light open corner rails + rear LED strip bar (~8g PLA)</span>
+                </div>
+                <input id="lithoLightbox" type="checkbox" checked class="w-4 h-4 rounded accent-amber-400 cursor-pointer" />
+              </div>
+
+              <div id="lightboxSubControls" class="space-y-3 pl-2 border-l-2 border-amber-500/30">
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <label for="lightboxDepth" class="text-gray-300">LED Stand-Off Depth</label>
+                    <span id="valLightboxDepth" class="font-mono text-amber-400 font-semibold">15 mm</span>
+                  </div>
+                  <input id="lightboxDepth" type="range" min="10" max="30" step="1" value="15" class="w-full" />
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <label for="cableSlotWidth" class="text-gray-300">LED Strip Mount Bar Width</label>
+                    <span id="valCableSlotWidth" class="font-mono text-amber-400 font-semibold">12 mm</span>
+                  </div>
+                  <input id="cableSlotWidth" type="range" min="8" max="24" step="2" value="12" class="w-full" />
+                </div>
+
+                <div>
+                  <label class="block text-xs text-gray-300 mb-1.5">3D Light Sample Preview (Visual Only)</label>
+                  <div class="grid grid-cols-3 gap-1.5">
+                    <button data-led="cob-strip" class="led-sample-btn active py-1.5 px-2 rounded-lg text-[11px] font-medium border border-amber-500/70 bg-workbench-800 text-amber-300 transition">
+                      COB Strip
+                    </button>
+                    <button data-led="puck" class="led-sample-btn py-1.5 px-2 rounded-lg text-[11px] font-medium border border-workbench-700 bg-workbench-800/50 text-gray-300 hover:bg-workbench-800 transition">
+                      Puck / Tealight
+                    </button>
+                    <button data-led="none" class="led-sample-btn py-1.5 px-2 rounded-lg text-[11px] font-medium border border-workbench-700 bg-workbench-800/50 text-gray-300 hover:bg-workbench-800 transition">
+                      None
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dimensions -->
+          <div class="bg-workbench-850 rounded-xl p-3.5 border border-workbench-700/70 space-y-4">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Plaque Dimensions (mm)</h3>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <label for="plaqueSize" class="text-gray-300 font-medium">Width & Height (Square)</label>
+                <span id="valPlaqueSize" class="font-mono text-gold-400 font-semibold">140 mm</span>
+              </div>
+              <input id="plaqueSize" type="range" min="80" max="210" step="5" value="140" class="w-full" />
+              <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+                <span>80 mm</span>
+                <span>CR-10 SE Max: 220 mm</span>
+              </div>
+            </div>
+
+            <div id="reliefDimControls" class="space-y-4">
+              <div>
+                <div class="flex justify-between text-xs mb-1.5">
+                  <label for="baseThickness" class="text-gray-300 font-medium">Base Plate Thickness (Color 1)</label>
+                  <span id="valBaseThickness" class="font-mono text-gold-400 font-semibold">3.2 mm</span>
+                </div>
+                <input id="baseThickness" type="range" min="2.0" max="8.0" step="0.2" value="3.2" class="w-full" />
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1.5">
+                  <label for="reliefHeight" class="text-gray-300 font-medium">Raised Relief Height (Color 2)</label>
+                  <span id="valReliefHeight" class="font-mono text-gold-400 font-semibold">0.8 mm</span>
+                </div>
+                <input id="reliefHeight" type="range" min="0.4" max="2.4" step="0.2" value="0.8" class="w-full" />
+                <p class="text-[11px] text-gray-400 mt-1">0.8 mm = 4 solid layers at 0.20 mm layer height for rich color opacity.</p>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <label for="bevelWidth" class="text-gray-300 font-medium">Outer Stone Bevel & Frame</label>
+                <span id="valBevelWidth" class="font-mono text-gold-400 font-semibold">3.5 mm</span>
+              </div>
+              <input id="bevelWidth" type="range" min="0" max="8.0" step="0.5" value="3.5" class="w-full" />
+            </div>
+          </div>
+
+          <!-- Hanging Hook & Mounting Options -->
+          <div class="bg-workbench-850 rounded-xl p-3.5 border border-workbench-700/70 space-y-3.5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Wall Hook / Mounting</h3>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-workbench-800 text-gray-300 border border-workbench-700">No Supports Needed</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button data-hook="none" class="hook-btn py-2 px-2 rounded-lg text-xs font-medium border border-workbench-700 bg-workbench-800/50 text-gray-300 hover:bg-workbench-800 transition">
+                None (Stand)
+              </button>
+              <button data-hook="top-eyelet" class="hook-btn active py-2 px-2 rounded-lg text-xs font-medium border border-gold-500/70 bg-workbench-800 text-gold-400 transition">
+                Top Loop Hook
+              </button>
+              <button data-hook="keyhole" class="hook-btn py-2 px-2 rounded-lg text-xs font-medium border border-workbench-700 bg-workbench-800/50 text-gray-300 hover:bg-workbench-800 transition">
+                Back Keyhole
+              </button>
+            </div>
+
+            <!-- Top Loop Hook Controls -->
+            <div id="hookEyeletControls" class="space-y-3 pt-1 border-t border-workbench-700/60">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="hookOuterDia" class="text-gray-300">Loop Outer Diameter</label>
+                  <span id="valHookOuterDia" class="font-mono text-gold-400">14 mm</span>
+                </div>
+                <input id="hookOuterDia" type="range" min="10" max="24" step="1" value="14" class="w-full" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="hookHoleDia" class="text-gray-300">Nail Hole Diameter</label>
+                  <span id="valHookHoleDia" class="font-mono text-gold-400">5.5 mm</span>
+                </div>
+                <input id="hookHoleDia" type="range" min="3.0" max="10.0" step="0.5" value="5.5" class="w-full" />
+              </div>
+            </div>
+
+            <!-- Back Keyhole Info -->
+            <div id="hookKeyholeInfo" class="hidden pt-1 border-t border-workbench-700/60 text-xs text-gray-400 leading-relaxed">
+              Carves a <span class="text-gray-200 font-medium">teardrop keyhole slot</span> (8 mm entry, 4.5 mm shaft, 2.0 mm deep) directly into the back face so the plaque hangs flush against a wall nail. Requires at least 3.2 mm base thickness.
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: YANTRA STARS & TAMIL TYPOGRAPHY -->
+        <div id="tab-yantra" class="tab-panel hidden space-y-5">
+          <!-- Star Geometry -->
+          <div class="bg-workbench-850 rounded-xl p-3.5 border border-workbench-700/70 space-y-4">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Shatkona (6-Star) Geometry</h3>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <label for="starStroke" class="text-gray-300 font-medium">Star Line Thickness</label>
+                <span id="valStarStroke" class="font-mono text-gold-400 font-semibold">1.4 mm</span>
+              </div>
+              <input id="starStroke" type="range" min="0.8" max="2.6" step="0.1" value="1.4" class="w-full" />
+              <p class="text-[11px] text-gray-400 mt-1">Recommended ≥ 1.2 mm for 3 clean wall loops with a 0.4 mm nozzle.</p>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <label for="yantraScale" class="text-gray-300 font-medium">Yantra Scale on Plaque</label>
+                <span id="valYantraScale" class="font-mono text-gold-400 font-semibold">82%</span>
+              </div>
+              <input id="yantraScale" type="range" min="65" max="90" step="1" value="82" class="w-full" />
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <label for="outerBorderRing" class="text-xs text-gray-300 font-medium">Add Raised Inner Border Frame</label>
+              <input id="outerBorderRing" type="checkbox" class="w-4 h-4 rounded accent-gold-500 cursor-pointer" />
+            </div>
+          </div>
+
+          <!-- Tamil Sacred Syllables -->
+          <div class="bg-workbench-850 rounded-xl p-3.5 border border-workbench-700/70 space-y-3.5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Tamil Sacred Mantra</h3>
+              <button id="btnResetTamil" class="text-[11px] text-gold-400 hover:underline">Reset Default</button>
+            </div>
+
+            <div>
+              <label for="centerText" class="block text-xs text-gray-300 mb-1">Center Sacred Syllable (Pranava)</label>
+              <div class="flex gap-2">
+                <input id="centerText" type="text" value="ஓம்" maxlength="4" class="flex-1 bg-workbench-900 border border-workbench-700 rounded-lg px-3 py-2 text-base font-tamil font-bold text-gold-400 focus:outline-none focus:border-gold-500" />
+                <button data-center="ஓம்" class="quick-center px-3 py-1.5 rounded-lg bg-workbench-800 hover:bg-workbench-700 text-sm font-tamil text-gray-200 border border-workbench-700">ஓம்</button>
+                <button data-center="வேல்" class="quick-center px-3 py-1.5 rounded-lg bg-workbench-800 hover:bg-workbench-700 text-sm font-tamil text-gray-200 border border-workbench-700">வேல்</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs text-gray-300 mb-1.5">Six Star Syllables (Clockwise from Top)</label>
+              <div class="grid grid-cols-6 gap-1.5">
+                <div class="text-center">
+                  <span class="block text-[10px] text-gray-500 mb-0.5">Top</span>
+                  <input id="char0" type="text" value="ச" maxlength="2" class="char-input w-full text-center bg-workbench-900 border border-workbench-700 rounded-lg py-1.5 text-sm font-tamil font-bold text-white focus:outline-none focus:border-gold-500" />
+                </div>
+                <div class="text-center">
+                  <span class="block text-[10px] text-gray-500 mb-0.5">Top-R</span>
+                  <input id="char1" type="text" value="ர" maxlength="2" class="char-input w-full text-center bg-workbench-900 border border-workbench-700 rounded-lg py-1.5 text-sm font-tamil font-bold text-white focus:outline-none focus:border-gold-500" />
+                </div>
+                <div class="text-center">
+                  <span class="block text-[10px] text-gray-500 mb-0.5">Bot-R</span>
+                  <input id="char2" type="text" value="வ" maxlength="2" class="char-input w-full text-center bg-workbench-900 border border-workbench-700 rounded-lg py-1.5 text-sm font-tamil font-bold text-white focus:outline-none focus:border-gold-500" />
+                </div>
+                <div class="text-center">
+                  <span class="block text-[10px] text-gray-500 mb-0.5">Bot</span>
+                  <input id="char3" type="text" value="ண" maxlength="2" class="char-input w-full text-center bg-workbench-900 border border-workbench-700 rounded-lg py-1.5 text-sm font-tamil font-bold text-white focus:outline-none focus:border-gold-500" />
+                </div>
+                <div class="text-center">
+                  <span class="block text-[10px] text-gray-500 mb-0.5">Bot-L</span>
+                  <input id="char4" type="text" value="ப" maxlength="2" class="char-input w-full text-center bg-workbench-900 border border-workbench-700 rounded-lg py-1.5 text-sm font-tamil font-bold text-white focus:outline-none focus:border-gold-500" />
+                </div>
+                <div class="text-center">
+                  <span class="block text-[10px] text-gray-500 mb-0.5">Top-L</span>
+                  <input id="char5" type="text" value="வ" maxlength="2" class="char-input w-full text-center bg-workbench-900 border border-workbench-700 rounded-lg py-1.5 text-sm font-tamil font-bold text-white focus:outline-none focus:border-gold-500" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <label for="fontScale" class="text-gray-300 font-medium">Letter Size Multiplier</label>
+                <span id="valFontScale" class="font-mono text-gold-400 font-semibold">100%</span>
+              </div>
+              <input id="fontScale" type="range" min="75" max="125" step="5" value="100" class="w-full" />
+            </div>
+
+            <div>
+              <label for="tamilFontFamily" class="block text-xs text-gray-300 mb-1">Tamil Typography Style</label>
+              <select id="tamilFontFamily" class="w-full bg-workbench-900 border border-workbench-700 rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-gold-500">
+                <option value="'Noto Sans Tamil', sans-serif">Noto Sans Tamil Bold (Clean Modern Print)</option>
+                <option value="'Noto Serif Tamil', serif">Noto Serif Tamil Bold (Traditional Chisel)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: SLICER SETTINGS & CR-10 SE G-CODE -->
+        <div id="tab-slicer" class="tab-panel hidden space-y-4">
+          <!-- Dynamic Layer Swap Card (2-Color Mode) -->
+          <div id="slicerSwapCard" class="bg-gradient-to-br from-workbench-850 to-workbench-900 rounded-xl p-4 border border-gold-500/40 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-gold-400">Exact Filament Swap Point</span>
+              <span class="px-2 py-0.5 rounded bg-gold-500/15 text-gold-400 font-mono text-[11px] font-semibold">0.20 mm Layer</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+              <div class="bg-workbench-950/80 rounded-lg p-2.5 border border-workbench-700/70">
+                <div class="text-[11px] text-gray-400">Pause At Layer #</div>
+                <div id="slicerSwapLayer" class="text-xl font-mono font-bold text-white mt-0.5">Layer 17</div>
+              </div>
+              <div class="bg-workbench-950/80 rounded-lg p-2.5 border border-workbench-700/70">
+                <div class="text-[11px] text-gray-400">Pause Z-Height</div>
+                <div id="slicerSwapZ" class="text-xl font-mono font-bold text-gold-400 mt-0.5">3.40 mm</div>
+              </div>
+            </div>
+
+            <p class="text-xs text-gray-300 leading-relaxed">
+              Layers <span class="font-mono text-white">1 – <span id="slicerBaseLayers">16</span></span> print the background plaque (<span id="slicerBaseMm">3.2 mm</span>). At the start of <span class="font-mono text-gold-400 font-semibold" id="slicerSwapLayerInline">Layer 17</span>, insert a <strong>Pause / Filament Change</strong> in Creality Print or OrcaSlicer.
+            </p>
+          </div>
+
+          <!-- Lithophane Slicer Card (Lithophane Mode) -->
+          <div id="slicerLithoCard" class="hidden bg-gradient-to-br from-workbench-850 to-workbench-900 rounded-xl p-4 border border-amber-500/40 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Lithophane Print Rules</span>
+              <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono text-[11px] font-semibold">1 Filament (White PLA)</span>
+            </div>
+            <p class="text-xs text-gray-300 leading-relaxed">
+              Print the entire STL in <strong>Matte White or Natural PLA</strong> with <strong>100% infill / 99 walls</strong> so no internal grid patterns show through when backlit. For maximum sharpness, stand the plaque vertically along the Y-axis with a 5 mm brim.
+            </p>
+          </div>
+
+          <!-- Recommended Creality Print / OrcaSlicer Profile -->
+          <div class="bg-workbench-850 rounded-xl p-3.5 border border-workbench-700/70 space-y-2.5">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Creality CR-10 SE Recommended Settings</h3>
+            <div class="divide-y divide-workbench-700/60 text-xs">
+              <div class="py-1.5 flex justify-between">
+                <span class="text-gray-400">Nozzle Diameter</span>
+                <span class="font-mono text-gray-200">0.40 mm</span>
+              </div>
+              <div class="py-1.5 flex justify-between">
+                <span class="text-gray-400">Layer Height / First Layer</span>
+                <span id="slicerLayerHeightVal" class="font-mono text-gray-200">0.20 mm / 0.20 mm</span>
+              </div>
+              <div class="py-1.5 flex justify-between">
+                <span class="text-gray-400">Wall Generator</span>
+                <span class="font-mono text-emerald-400">Arachne (Crisp Tamil Curves)</span>
+              </div>
+              <div class="py-1.5 flex justify-between">
+                <span class="text-gray-400">Top Surface Pattern</span>
+                <span class="font-mono text-gray-200">Monotonic Line</span>
+              </div>
+              <div class="py-1.5 flex justify-between">
+                <span class="text-gray-400">Ironing (Optional)</span>
+                <span id="slicerIroningVal" class="font-mono text-gray-200">Top Surfaces (25 mm/s, 10%)</span>
+              </div>
+              <div class="py-1.5 flex justify-between">
+                <span class="text-gray-400">Infill Density & Pattern</span>
+                <span id="slicerInfillVal" class="font-mono text-gray-200">15% Gyroid / Grid</span>
+              </div>
+              <div class="py-1.5 flex justify-between">
+                <span class="text-gray-400">Supports</span>
+                <span class="font-mono text-emerald-400">None (Flat Back)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Klipper Pause Macro Helper -->
+          <div class="bg-workbench-850 rounded-xl p-3.5 border border-workbench-700/70 space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">CR-10 SE Klipper Pause Note</h3>
+              <button id="btnCopyGcode" class="text-[11px] px-2 py-0.5 rounded bg-workbench-700 hover:bg-workbench-600 text-gold-400 font-medium transition">
+                Copy PAUSE
+              </button>
+            </div>
+            <p class="text-[11px] text-gray-400 leading-relaxed">
+              The CR-10 SE runs Klipper on the Nebula Pad. In OrcaSlicer / Creality Print, use <strong>Add Pause</strong> (<code class="text-gold-400 font-mono">PAUSE</code>) rather than legacy Marlin <code class="font-mono text-gray-300">M600</code> so the toolhead parks cleanly and waits for you to tap <em>Resume</em> on screen.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Telemetry Readout Bar -->
+      <div class="bg-workbench-950 border-t border-workbench-700/80 px-4 py-2.5 grid grid-cols-3 gap-2 text-center shrink-0">
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-gray-500">Total Height</div>
+          <div id="statTotalHeight" class="text-xs font-mono font-semibold text-gray-200">4.00 mm</div>
+        </div>
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-gray-500">Est. PLA Weight</div>
+          <div id="statWeight" class="text-xs font-mono font-semibold text-gray-200">~68 g</div>
+        </div>
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-gray-500">Mesh Triangles</div>
+          <div id="statTriangles" class="text-xs font-mono font-semibold text-emerald-400">0</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Interactive 3D Viewport -->
+    <main class="flex-1 relative bg-workbench-950 min-h-[420px] lg:min-h-0 flex flex-col">
+      <!-- 3D Canvas Container -->
+      <div id="viewportContainer" class="flex-1 relative w-full h-full overflow-hidden">
+        <canvas id="threeCanvas" class="w-full h-full block outline-none"></canvas>
+
+        <!-- Floating Camera & View Controls (Top Left) -->
+        <div class="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 bg-workbench-900/85 backdrop-blur-md p-1.5 rounded-xl border border-workbench-700/80 shadow-xl">
+          <button id="camIso" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-workbench-800 text-gold-400 hover:bg-workbench-700 transition">3D Angle</button>
+          <button id="camTop" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:bg-workbench-800 transition">Top View</button>
+          <button id="camBack" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:bg-workbench-800 transition">Back View</button>
+          <div class="w-px h-4 bg-workbench-700 mx-0.5"></div>
+          <label class="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 cursor-pointer select-none">
+            <input id="toggleBed" type="checkbox" checked class="rounded accent-gold-500" />
+            <span>CR-10 SE Bed (220mm)</span>
+          </label>
+        </div>
+
+        <!-- Loading / Generation Pill -->
+        <div id="generatingBadge" class="hidden absolute top-3 right-3 bg-workbench-900/90 backdrop-blur-md border border-gold-500/40 text-gold-400 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 shadow-lg">
+          <span class="w-2 h-2 rounded-full bg-gold-400 animate-ping"></span>
+          Generating Manifold Mesh...
+        </div>
+
+        <!-- Toast Notification Banner -->
+        <div id="toastBanner" class="pointer-events-none opacity-0 transition-opacity duration-200 absolute bottom-20 left-1/2 -translate-x-1/2 bg-workbench-800/95 border border-gold-500/50 text-white px-4 py-2 rounded-full text-xs font-medium shadow-2xl z-30">
+          STL Exported!
+        </div>
+
+        <!-- Interactive Slicer Layer Inspector Bar (Bottom Overlay) -->
+        <div class="absolute bottom-3 left-3 right-3 bg-workbench-900/90 backdrop-blur-md border border-workbench-700/80 rounded-2xl p-3 shadow-2xl">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-white">Slicer Layer Inspector</span>
+              <span id="layerStatusBadge" class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-gold-500/20 text-gold-400 border border-gold-500/30">
+                Full Model (Layer 20 / 20)
+              </span>
+            </div>
+            <div class="flex items-center gap-3 text-xs font-mono">
+              <span class="text-gray-400">Z: <strong id="inspectorZ" class="text-white">4.00 mm</strong></span>
+              <button id="btnJumpSwap" class="text-gold-400 hover:text-gold-300 underline font-sans font-medium">
+                Jump to Color Swap Layer
+              </button>
+            </div>
+          </div>
+          <input id="layerSlider" type="range" min="1" max="20" step="1" value="20" class="w-full" />
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Application Logic (ES Module) -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+    import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+    // =========================================================================
+    // 1. APPLICATION STATE
+    // =========================================================================
+    const state = {
+      printMode: 'relief',   // 'relief' | 'lithophane'
+      lithoMinThick: 0.8,    // mm (brightest transmitted light)
+      lithoMaxThick: 3.2,    // mm (darkest shadow)
+      lithoInvert: true,     // true = glowing bright stars/letters on dark background
+      lithoBacklight: true,  // simulated warm LED backlight in 3D preview
+      lithoLightbox: true,   // integrated minimalist LED holder frame
+      lightboxDepth: 15,     // mm stand-off depth of rear LED holder
+      cableSlotWidth: 12,    // mm rear LED mounting bar width
+      ledSampleType: 'cob-strip', // 'cob-strip' | 'puck' | 'none' (visual preview only, never exported in STL)
+      plaqueSize: 140,       // mm
+      baseThickness: 3.2,    // mm
+      reliefHeight: 0.8,     // mm
+      bevelWidth: 3.5,       // mm
+      hookType: 'top-eyelet',// 'none' | 'top-eyelet' | 'keyhole'
+      hookOuterDia: 14,      // mm
+      hookHoleDia: 5.5,      // mm
+      starStroke: 1.4,       // mm
+      yantraScale: 0.82,     // 82% of inner flat plaque
+      outerBorderRing: false,
+      centerText: 'ஓம்',
+      outerChars: ['ச', 'ர', 'வ', 'ண', 'ப', 'வ'],
+      fontScale: 1.0,
+      fontFamily: "'Noto Sans Tamil', sans-serif",
+      baseColor: '#f2efe9',
+      reliefColor: '#e5b53b',
+      layerHeight: 0.20,
+      inspectLayer: 20
+    };
+
+    // =========================================================================
+    // 2. THREE.JS SCENE, LIGHTING & CONTROLS SETUP
+    // =========================================================================
+    const container = document.getElementById('viewportContainer');
+    const canvas = document.getElementById('threeCanvas');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#090b0e');
+
+    const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 1, 2000);
+    // Z-up CAD convention so exported STLs import flat on the 3D printer bed
+    camera.up.set(0, 0, 1);
+    camera.position.set(0, -145, 165);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(container.clientWidth, container.clientHeight, false);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.localClippingEnabled = true;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.target.set(0, 0, 2);
+    controls.minDistance = 40;
+    controls.maxDistance = 600;
+    controls.maxPolarAngle = Math.PI * 0.98; // Full 360° vertical orbit to inspect the underside/back
+
+    // Studio 3-Point Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xfff9ed, 1.5);
+    keyLight.position.set(90, -110, 180);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.bias = -0.0005;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xc7d8ff, 0.55);
+    fillLight.position.set(-120, 90, 100);
+    scene.add(fillLight);
+
+    const backRimLight = new THREE.DirectionalLight(0xffe7b3, 0.65);
+    backRimLight.position.set(0, 80, -140);
+    scene.add(backRimLight);
+
+    // Physical 3D Light Sample Preview Group (visual only - never included in STL exports)
+    const ledPreviewGroup = new THREE.Group();
+    scene.add(ledPreviewGroup);
+
+    const internalLedLight = new THREE.PointLight(0xffb84d, 0, 260, 1.4);
+    scene.add(internalLedLight);
+
+    // Clipping plane for Slicer Layer Inspector
+    const zClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 100);
+
+    // Materials
+    const baseMaterial = new THREE.MeshStandardMaterial({
+      color: state.baseColor,
+      roughness: 0.62,
+      metalness: 0.04,
+      clippingPlanes: [zClipPlane],
+      clipShadows: true
+    });
+
+    const reliefMaterial = new THREE.MeshStandardMaterial({
+      color: state.reliefColor,
+      roughness: 0.28,
+      metalness: 0.68,
+      clippingPlanes: [zClipPlane],
+      clipShadows: true
+    });
+
+    const lithoMaterial = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.48,
+      metalness: 0.02,
+      clippingPlanes: [zClipPlane],
+      clipShadows: true
+    });
+
+    // Creality CR-10 SE Build Plate Reference (220 x 220 mm)
+    const buildPlateGroup = new THREE.Group();
+    const bedGeo = new THREE.PlaneGeometry(220, 220);
+    const bedMat = new THREE.MeshStandardMaterial({
+      color: 0x131820,
+      roughness: 0.85,
+      metalness: 0.1,
+      side: THREE.DoubleSide
+    });
+    const bedMesh = new THREE.Mesh(bedGeo, bedMat);
+    bedMesh.position.z = -0.06;
+    bedMesh.receiveShadow = true;
+    buildPlateGroup.add(bedMesh);
+
+    const gridHelper = new THREE.GridHelper(220, 22, 0x3b4859, 0x1e2631);
+    gridHelper.rotation.x = Math.PI / 2;
+    gridHelper.position.z = -0.03;
+    buildPlateGroup.add(gridHelper);
+    scene.add(buildPlateGroup);
+
+    // Model Group holding Base + Relief meshes
+    const modelGroup = new THREE.Group();
+    scene.add(modelGroup);
+
+    let currentBaseGeo = null;
+    let currentReliefGeo = null;
+
+    // =========================================================================
+    // 3. HIGH-RESOLUTION TAMIL GLYPH VECTORIZER (CANVAS -> MARCHING SQUARES -> THREE.SHAPE)
+    // =========================================================================
+    /**
+     * Renders any Tamil Unicode text onto an offscreen supersampled canvas and extracts
+     * clean, watertight THREE.Shape contours (with holes) for 3D extrusion.
+     */
+    function createTextShapes(text, targetHeightMm, fontFamily) {
+      if (!text || !text.trim()) return [];
+
+      const scalePx = 18; // 18 pixels per mm for crisp Tamil curves
+      const padPx = 40;
+      const fontSizePx = Math.round(targetHeightMm * scalePx);
+
+      const measureCanvas = document.createElement('canvas');
+      const mCtx = measureCanvas.getContext('2d');
+      mCtx.font = `700 ${fontSizePx}px ${fontFamily}`;
+      const metrics = mCtx.measureText(text);
+
+      const width = Math.max(64, Math.ceil(metrics.width + padPx * 2));
+      const height = Math.max(64, Math.ceil(fontSizePx * 1.65 + padPx * 2));
+
+      const canvas2d = document.createElement('canvas');
+      canvas2d.width = width;
+      canvas2d.height = height;
+      const ctx = canvas2d.getContext('2d', { willReadFrequently: true });
+
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.font = `700 ${fontSizePx}px ${fontFamily}`;
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, width / 2, height / 2);
+
+      const imgData = ctx.getImageData(0, 0, width, height).data;
+      const binary = new Uint8Array(width * height);
+      for (let i = 0; i < width * height; i++) {
+        binary[i] = imgData[i * 4] > 120 ? 1 : 0;
+      }
+
+      // Extract boundary directed segments using cell-edge marching squares
+      const segments = [];
+      for (let y = 0; y < height - 1; y++) {
+        for (let x = 0; x < width - 1; x++) {
+          const tl = binary[y * width + x];
+          const tr = binary[y * width + (x + 1)];
+          const br = binary[(y + 1) * width + (x + 1)];
+          const bl = binary[(y + 1) * width + x];
+          const stateIdx = (tl << 3) | (tr << 2) | (br << 1) | bl;
+          if (stateIdx === 0 || stateIdx === 15) continue;
+
+          const top = [x + 0.5, y];
+          const right = [x + 1, y + 0.5];
+          const bottom = [x + 0.5, y + 1];
+          const left = [x, y + 0.5];
+
+          switch (stateIdx) {
+            case 1:  segments.push([left, bottom]); break;
+            case 2:  segments.push([bottom, right]); break;
+            case 3:  segments.push([left, right]); break;
+            case 4:  segments.push([right, top]); break;
+            case 5:  segments.push([left, top], [right, bottom]); break;
+            case 6:  segments.push([bottom, top]); break;
+            case 7:  segments.push([left, top]); break;
+            case 8:  segments.push([top, left]); break;
+            case 9:  segments.push([top, bottom]); break;
+            case 10: segments.push([top, right], [bottom, left]); break;
+            case 11: segments.push([top, right]); break;
+            case 12: segments.push([right, left]); break;
+            case 13: segments.push([right, bottom]); break;
+            case 14: segments.push([bottom, left]); break;
+          }
+        }
+      }
+
+      // Stitch segments into closed loops
+      const keyOf = (pt) => `${Math.round(pt[0] * 2)},${Math.round(pt[1] * 2)}`;
+      const adj = new Map();
+      segments.forEach((seg, idx) => {
+        const k = keyOf(seg[0]);
+        if (!adj.has(k)) adj.set(k, []);
+        adj.get(k).push(idx);
+      });
+
+      const visited = new Uint8Array(segments.length);
+      const rawLoops = [];
+
+      for (let i = 0; i < segments.length; i++) {
+        if (visited[i]) continue;
+        const loop = [];
+        let currIdx = i;
+        while (currIdx !== undefined && !visited[currIdx]) {
+          visited[currIdx] = 1;
+          const seg = segments[currIdx];
+          loop.push(seg[0]);
+          const nextKey = keyOf(seg[1]);
+          const candidates = adj.get(nextKey) || [];
+          currIdx = candidates.find(c => !visited[c]);
+        }
+        if (loop.length >= 6) {
+          rawLoops.push(loop);
+        }
+      }
+
+      function simplifyLoop(pts, epsilon) {
+        if (pts.length < 4) return pts;
+        const out = [pts[0]];
+        for (let i = 1; i < pts.length; i++) {
+          const prev = out[out.length - 1];
+          const dx = pts[i][0] - prev[0];
+          const dy = pts[i][1] - prev[1];
+          if (dx * dx + dy * dy >= epsilon * epsilon) {
+            out.push(pts[i]);
+          }
+        }
+        return out;
+      }
+
+      function signedArea(pts) {
+        let area = 0;
+        for (let i = 0; i < pts.length; i++) {
+          const j = (i + 1) % pts.length;
+          area += pts[i][0] * pts[j][1] - pts[j][0] * pts[i][1];
+        }
+        return area / 2;
+      }
+
+      function pointInPoly(pt, poly) {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const xi = poly[i][0], yi = poly[i][1];
+          const xj = poly[j][0], yj = poly[j][1];
+          const intersect = ((yi > pt[1]) !== (yj > pt[1])) &&
+            (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi + 1e-9) + xi);
+          if (intersect) inside = !inside;
+        }
+        return inside;
+      }
+
+      const mmLoops = rawLoops.map(loop => {
+        const simplified = simplifyLoop(loop, 1.35);
+        return simplified.map(([px, py]) => [
+          (px - width / 2) / scalePx,
+          -(py - height / 2) / scalePx
+        ]);
+      }).filter(l => l.length >= 4 && Math.abs(signedArea(l)) > 0.04);
+
+      const shapes = [];
+      const outerIndices = [];
+      const holeIndices = [];
+
+      mmLoops.forEach((loop, idx) => {
+        let depth = 0;
+        const samplePt = loop[0];
+        mmLoops.forEach((other, oIdx) => {
+          if (idx !== oIdx && pointInPoly(samplePt, other)) {
+            depth++;
+          }
+        });
+        if (depth % 2 === 0) outerIndices.push(idx);
+        else holeIndices.push(idx);
+      });
+
+      outerIndices.forEach(oIdx => {
+        const outerPts = mmLoops[oIdx];
+        if (signedArea(outerPts) < 0) outerPts.reverse();
+        const shape = new THREE.Shape(outerPts.map(([x, y]) => new THREE.Vector2(x, y)));
+
+        holeIndices.forEach(hIdx => {
+          const holePts = mmLoops[hIdx];
+          if (pointInPoly(holePts[0], outerPts)) {
+            let insideAnotherOuter = false;
+            outerIndices.forEach(otherO => {
+              if (otherO !== oIdx && pointInPoly(holePts[0], mmLoops[otherO]) && pointInPoly(mmLoops[otherO][0], outerPts)) {
+                insideAnotherOuter = true;
+              }
+            });
+            if (!insideAnotherOuter) {
+              if (signedArea(holePts) > 0) holePts.reverse();
+              const path = new THREE.Path(holePts.map(([x, y]) => new THREE.Vector2(x, y)));
+              shape.holes.push(path);
+            }
+          }
+        });
+
+        shapes.push(shape);
+      });
+
+      return shapes;
+    }
+
+    // =========================================================================
+    // 4. PARAMETRIC CAD GEOMETRY BUILDERS
+    // =========================================================================
+
+    /**
+     * Normalizes a BufferGeometry so mergeGeometries() succeeds without attribute mismatch.
+     * Converts to non-indexed, ensures normals exist, and strips UVs/extra attributes.
+     */
+    function normalizeForMerge(geo) {
+      const g = geo.index ? geo.toNonIndexed() : geo.clone();
+      if (!g.attributes.normal) {
+        g.computeVertexNormals();
+      }
+      for (const attrName of Object.keys(g.attributes)) {
+        if (attrName !== 'position' && attrName !== 'normal') {
+          g.deleteAttribute(attrName);
+        }
+      }
+      return g;
+    }
+
+    /**
+     * Builds the beveled stone-style square base plate + optional hanging hook
+     * (either Top Loop Eyelet or Back Teardrop Keyhole slot).
+     */
+    function buildBasePlateGeometry() {
+      const S = state.plaqueSize;
+      const H = state.baseThickness;
+      const B = Math.min(state.bevelWidth, S * 0.15);
+      const half = S / 2;
+      const innerHalf = half - B;
+      const bevelStartZ = Math.max(0.4, H - B * 0.65);
+
+      const geometries = [];
+
+      // 1. Main Base Body
+      if (state.hookType === 'keyhole' && H >= 2.8) {
+        const keyholeDepth = Math.min(2.2, H - 1.0);
+        const khCenterY = half * 0.62;
+
+        const bottomShape = new THREE.Shape();
+        bottomShape.moveTo(-half, -half);
+        bottomShape.lineTo(half, -half);
+        bottomShape.lineTo(half, half);
+        bottomShape.lineTo(-half, half);
+        bottomShape.closePath();
+
+        const khHole = new THREE.Path();
+        const bigR = 4.2;
+        const smallR = 2.3;
+        const slotLen = 8.0;
+        khHole.absarc(0, khCenterY - slotLen / 2, bigR, Math.PI * 0.25, Math.PI * 0.75, true);
+        khHole.lineTo(-smallR, khCenterY + slotLen / 2);
+        khHole.absarc(0, khCenterY + slotLen / 2, smallR, Math.PI, 0, true);
+        khHole.lineTo(bigR * Math.cos(Math.PI * 0.25), khCenterY - slotLen / 2 + bigR * Math.sin(Math.PI * 0.25));
+        bottomShape.holes.push(khHole);
+
+        const bottomExtrude = new THREE.ExtrudeGeometry(bottomShape, {
+          depth: keyholeDepth,
+          bevelEnabled: false,
+          curveSegments: 24
+        });
+        geometries.push(bottomExtrude);
+
+        if (bevelStartZ > keyholeDepth) {
+          const midH = bevelStartZ - keyholeDepth;
+          const midBox = new THREE.BoxGeometry(S, S, midH);
+          midBox.translate(0, 0, keyholeDepth + midH / 2);
+          geometries.push(midBox);
+        }
+      } else {
+        const lowerBox = new THREE.BoxGeometry(S, S, bevelStartZ);
+        lowerBox.translate(0, 0, bevelStartZ / 2);
+        geometries.push(lowerBox);
+      }
+
+      // 2. Top Beveled Frustum Cap (from bevelStartZ to H)
+      const capH = H - bevelStartZ;
+      if (capH > 0.01 && B > 0.01) {
+        const capGeo = new THREE.BufferGeometry();
+        const b0 = half, b1 = innerHalf;
+        const z0 = bevelStartZ, z1 = H;
+
+        const v = [
+          [-b0, -b0, z0], [ b0, -b0, z0], [ b0,  b0, z0], [-b0,  b0, z0],
+          [-b1, -b1, z1], [ b1, -b1, z1], [ b1,  b1, z1], [-b1,  b1, z1]
+        ];
+
+        const tris = [
+          4, 5, 6,  4, 6, 7,
+          0, 1, 5,  0, 5, 4,
+          1, 2, 6,  1, 6, 5,
+          2, 3, 7,  2, 7, 6,
+          3, 0, 4,  3, 4, 7
+        ];
+
+        const positions = new Float32Array(tris.length * 3);
+        tris.forEach((vi, idx) => {
+          positions[idx * 3] = v[vi][0];
+          positions[idx * 3 + 1] = v[vi][1];
+          positions[idx * 3 + 2] = v[vi][2];
+        });
+        capGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        capGeo.computeVertexNormals();
+        geometries.push(capGeo);
+      } else {
+        const topBox = new THREE.BoxGeometry(S, S, Math.max(0.1, capH));
+        topBox.translate(0, 0, bevelStartZ + capH / 2);
+        geometries.push(topBox);
+      }
+
+      // 3. Top Loop Eyelet Hook
+      if (state.hookType === 'top-eyelet') {
+        const outerR = state.hookOuterDia / 2;
+        const holeR = Math.min(state.hookHoleDia / 2, outerR - 1.8);
+        const loopCenterY = half + outerR * 0.55;
+
+        const loopShape = new THREE.Shape();
+        loopShape.absarc(0, loopCenterY, outerR, 0, Math.PI * 2, false);
+
+        const neckW = outerR * 1.45;
+        loopShape.moveTo(-neckW / 2, half - 1.5);
+        loopShape.lineTo(neckW / 2, half - 1.5);
+        loopShape.lineTo(neckW / 2, loopCenterY);
+        loopShape.lineTo(-neckW / 2, loopCenterY);
+        loopShape.closePath();
+
+        const holePath = new THREE.Path();
+        holePath.absarc(0, loopCenterY, holeR, 0, Math.PI * 2, true);
+        loopShape.holes.push(holePath);
+
+        const hookH = Math.min(H, Math.max(2.2, bevelStartZ + capH * 0.4));
+        const hookGeo = new THREE.ExtrudeGeometry(loopShape, {
+          depth: hookH,
+          bevelEnabled: false,
+          curveSegments: 36
+        });
+        geometries.push(hookGeo);
+      }
+
+      const normalizedGeos = geometries.map(normalizeForMerge);
+      const merged = mergeGeometries(normalizedGeos, false);
+      merged.computeVertexNormals();
+      return merged;
+    }
+
+    /**
+     * Helper to create a crisp 2D hollow triangle shape (for Hexagram / Shatkona stars)
+     */
+    function createHollowTriangleShape(cx, cy, outerRadius, strokeWidth, pointUp) {
+      const rot = pointUp ? Math.PI / 2 : -Math.PI / 2;
+      const outerPts = [];
+      for (let i = 0; i < 3; i++) {
+        const a = rot + (i * 2 * Math.PI) / 3;
+        outerPts.push(new THREE.Vector2(
+          cx + outerRadius * Math.cos(a),
+          cy + outerRadius * Math.sin(a)
+        ));
+      }
+
+      const innerRadius = Math.max(0.5, outerRadius - 2 * strokeWidth);
+      const innerPts = [];
+      for (let i = 0; i < 3; i++) {
+        const a = rot + (i * 2 * Math.PI) / 3;
+        innerPts.push(new THREE.Vector2(
+          cx + innerRadius * Math.cos(a),
+          cy + innerRadius * Math.sin(a)
+        ));
+      }
+
+      const shape = new THREE.Shape(outerPts);
+      const hole = new THREE.Path(innerPts.reverse());
+      shape.holes.push(hole);
+      return shape;
+    }
+
+    /**
+     * Builds the raised Saravanabhava Yantra geometry (6 interlocking stars,
+     * central Om, 6 surrounding Tamil letters, and optional border frame).
+     */
+    function buildYantraReliefGeometry() {
+      const S = state.plaqueSize;
+      const flatSpan = S - state.bevelWidth * 2;
+      const yantraRadius = (flatSpan / 2) * state.yantraScale;
+
+      const ringRadius = yantraRadius * 0.635;
+      const starRadius = ringRadius * 0.575;
+      const stroke = state.starStroke;
+
+      const allShapes = [];
+
+      // 1. Six Interlocking Hexagrams (Shatkona) arranged in a sacred circle
+      for (let i = 0; i < 6; i++) {
+        const angle = Math.PI / 2 - (i * Math.PI) / 3;
+        const sx = ringRadius * Math.cos(angle);
+        const sy = ringRadius * Math.sin(angle);
+
+        allShapes.push(createHollowTriangleShape(sx, sy, starRadius, stroke, true));
+        allShapes.push(createHollowTriangleShape(sx, sy, starRadius, stroke, false));
+      }
+
+      // 2. Optional Raised Inner Border Frame
+      if (state.outerBorderRing) {
+        const frameOuter = (flatSpan / 2) - 2.0;
+        const frameInner = frameOuter - stroke;
+        if (frameInner > yantraRadius) {
+          const frameShape = new THREE.Shape();
+          frameShape.moveTo(-frameOuter, -frameOuter);
+          frameShape.lineTo(frameOuter, -frameOuter);
+          frameShape.lineTo(frameOuter, frameOuter);
+          frameShape.lineTo(-frameOuter, frameOuter);
+          frameShape.closePath();
+
+          const frameHole = new THREE.Path();
+          frameHole.moveTo(-frameInner, -frameInner);
+          frameHole.lineTo(-frameInner, frameInner);
+          frameHole.lineTo(frameInner, frameInner);
+          frameHole.lineTo(frameInner, -frameInner);
+          frameHole.closePath();
+
+          frameShape.holes.push(frameHole);
+          allShapes.push(frameShape);
+        }
+      }
+
+      // 3. Central Sacred Tamil Syllable ("ஓம்")
+      const centerFontSize = ringRadius * 0.44 * state.fontScale;
+      const centerShapes = createTextShapes(state.centerText, centerFontSize, state.fontFamily);
+      allShapes.push(...centerShapes);
+
+      // 4. Six Surrounding Tamil Syllables ("ச, ர, வ, ண, ப, வ") inside each Hexagram
+      const outerFontSize = starRadius * 0.46 * state.fontScale;
+      for (let i = 0; i < 6; i++) {
+        const ch = state.outerChars[i] || '';
+        if (!ch.trim()) continue;
+        const angle = Math.PI / 2 - (i * Math.PI) / 3;
+        const sx = ringRadius * Math.cos(angle);
+        const sy = ringRadius * Math.sin(angle);
+
+        const charShapes = createTextShapes(ch, outerFontSize, state.fontFamily);
+        charShapes.forEach(sh => {
+          const translatedOuter = sh.getPoints().map(p => new THREE.Vector2(p.x + sx, p.y + sy));
+          const newSh = new THREE.Shape(translatedOuter);
+          sh.holes.forEach(h => {
+            const translatedHole = h.getPoints().map(p => new THREE.Vector2(p.x + sx, p.y + sy));
+            newSh.holes.push(new THREE.Path(translatedHole));
+          });
+          allShapes.push(newSh);
+        });
+      }
+
+      if (allShapes.length === 0) return null;
+
+      const extrudeGeo = new THREE.ExtrudeGeometry(allShapes, {
+        depth: state.reliefHeight,
+        bevelEnabled: false,
+        curveSegments: 12
+      });
+      extrudeGeo.translate(0, 0, state.baseThickness);
+      extrudeGeo.computeVertexNormals();
+      return extrudeGeo;
+    }
+
+    /**
+     * Renders a crisp 2D grayscale heightmap of the Saravanabhava Yantra
+     * (stars, optional inner frame, central Om, and 6 Tamil syllables) for Lithophane generation.
+     */
+    function renderYantraHeightmapCanvas(res) {
+      const canvas2d = document.createElement('canvas');
+      canvas2d.width = res;
+      canvas2d.height = res;
+      const ctx = canvas2d.getContext('2d', { willReadFrequently: true });
+
+      const S = state.plaqueSize;
+      const pxPerMm = res / S;
+      const cx0 = res / 2;
+      const cy0 = res / 2;
+
+      ctx.fillStyle = state.lithoInvert ? '#000000' : '#ffffff';
+      ctx.fillRect(0, 0, res, res);
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      const flatSpan = S - state.bevelWidth * 2;
+      const yantraRadius = (flatSpan / 2) * state.yantraScale;
+      const ringRadius = yantraRadius * 0.635;
+      const starRadius = ringRadius * 0.575;
+      const strokePx = state.starStroke * pxPerMm;
+
+      const fgColor = state.lithoInvert ? '#ffffff' : '#000000';
+      ctx.strokeStyle = fgColor;
+      ctx.fillStyle = fgColor;
+      ctx.lineWidth = strokePx;
+      ctx.lineJoin = 'miter';
+      ctx.miterLimit = 4;
+
+      function strokeTriangle(tx, ty, r, pointUp) {
+        const rot = pointUp ? -Math.PI / 2 : Math.PI / 2;
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const ang = rot + (i * 2 * Math.PI) / 3;
+          const vx = tx + r * Math.cos(ang);
+          const vy = ty + r * Math.sin(ang);
+          if (i === 0) ctx.moveTo(vx, vy);
+          else ctx.lineTo(vx, vy);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      // 1. Six Interlocking Hexagrams
+      for (let i = 0; i < 6; i++) {
+        const angle = -Math.PI / 2 + (i * Math.PI) / 3;
+        const sx = cx0 + ringRadius * pxPerMm * Math.cos(angle);
+        const sy = cy0 + ringRadius * pxPerMm * Math.sin(angle);
+        const rPx = (starRadius - state.starStroke * 0.5) * pxPerMm;
+        strokeTriangle(sx, sy, rPx, true);
+        strokeTriangle(sx, sy, rPx, false);
+      }
+
+      // 2. Optional Inner Border Frame
+      if (state.outerBorderRing) {
+        const frameHalfPx = ((flatSpan / 2) - 2.0 - state.starStroke * 0.5) * pxPerMm;
+        if (frameHalfPx > yantraRadius * pxPerMm) {
+          ctx.strokeRect(cx0 - frameHalfPx, cy0 - frameHalfPx, frameHalfPx * 2, frameHalfPx * 2);
+        }
+      }
+
+      // 3. Central Sacred Tamil Syllable ("ஓம்")
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const centerFontPx = Math.round(ringRadius * 0.44 * state.fontScale * pxPerMm);
+      ctx.font = `700 ${centerFontPx}px ${state.fontFamily}`;
+      if (state.centerText && state.centerText.trim()) {
+        ctx.fillText(state.centerText, cx0, cy0);
+      }
+
+      // 4. Six Surrounding Tamil Syllables
+      const outerFontPx = Math.round(starRadius * 0.46 * state.fontScale * pxPerMm);
+      ctx.font = `700 ${outerFontPx}px ${state.fontFamily}`;
+      for (let i = 0; i < 6; i++) {
+        const ch = state.outerChars[i] || '';
+        if (!ch.trim()) continue;
+        const angle = -Math.PI / 2 + (i * Math.PI) / 3;
+        const sx = cx0 + ringRadius * pxPerMm * Math.cos(angle);
+        const sy = cy0 + ringRadius * pxPerMm * Math.sin(angle);
+        ctx.fillText(ch, sx, sy);
+      }
+
+      ctx.restore();
+      return ctx.getImageData(0, 0, res, res).data;
+    }
+
+    /**
+     * Builds a watertight, manifold Lithophane STL mesh with variable Z thickness
+     * (flat back at Z=0, carved/modulated front face between lithoMinThick and lithoMaxThick,
+     * plus optional rear LED Lightbox housing & Top Loop Hook).
+     */
+    function buildLithophaneGeometry() {
+      const S = state.plaqueSize;
+      const half = S / 2;
+      const minT = Math.min(state.lithoMinThick, state.lithoMaxThick - 0.2);
+      const maxT = Math.max(state.lithoMaxThick, minT + 0.2);
+      const B = Math.min(state.bevelWidth, half * 0.25);
+
+      const zBaseOffset = state.lithoLightbox ? state.lightboxDepth : 0;
+
+      const gridN = 420; // 420x420 high-definition grid (~0.33 mm pitch) for razor-sharp Tamil letters
+      const imgData = renderYantraHeightmapCanvas(gridN + 1);
+
+      const zGrid = new Float32Array((gridN + 1) * (gridN + 1));
+      const brightnessGrid = new Float32Array((gridN + 1) * (gridN + 1));
+
+      const isPuckHotspot = state.lithoBacklight && state.lithoLightbox && state.ledSampleType === 'puck';
+
+      for (let iy = 0; iy <= gridN; iy++) {
+        const y = -half + (iy / gridN) * S;
+        const canvasRow = gridN - iy;
+        for (let ix = 0; ix <= gridN; ix++) {
+          const x = -half + (ix / gridN) * S;
+          const idx = iy * (gridN + 1) + ix;
+
+          const edgeDist = Math.min(half - Math.abs(x), half - Math.abs(y));
+          if (B > 0.1 && edgeDist < B) {
+            const t = edgeDist / B;
+            zGrid[idx] = zBaseOffset + maxT * (0.78 + 0.22 * t);
+            brightnessGrid[idx] = 0.08;
+          } else {
+            const lum = imgData[(canvasRow * (gridN + 1) + ix) * 4] / 255.0;
+            const zVal = zBaseOffset + (maxT - lum * (maxT - minT));
+            zGrid[idx] = zVal;
+
+            if (isPuckHotspot) {
+              // Simulate narrower beam falloff when using a single center puck/tealight
+              const distNorm = Math.hypot(x, y) / (half * 0.92);
+              const beamAtten = Math.max(0.28, 1.0 - 0.65 * Math.pow(distNorm, 1.8));
+              brightnessGrid[idx] = lum * beamAtten;
+            } else {
+              brightnessGrid[idx] = lum;
+            }
+          }
+        }
+      }
+
+      const positions = [];
+      const colors = [];
+
+      const darkCol = new THREE.Color('#3b3228');
+      const midCol = new THREE.Color('#e8b86b');
+      const brightCol = new THREE.Color('#fff4d4');
+      const unlitCol = new THREE.Color('#ebe7df');
+      const housingCol = new THREE.Color('#27221d');
+
+      function pushVertex(vx, vy, vz, lum, overrideCol = null) {
+        positions.push(vx, vy, vz);
+        if (overrideCol) {
+          colors.push(overrideCol.r, overrideCol.g, overrideCol.b);
+          return;
+        }
+        if (!state.lithoBacklight) {
+          const shade = 0.86 + 0.14 * lum;
+          colors.push(unlitCol.r * shade, unlitCol.g * shade, unlitCol.b * shade);
+        } else {
+          const c = new THREE.Color();
+          if (lum < 0.5) {
+            c.lerpColors(darkCol, midCol, lum * 2);
+          } else {
+            c.lerpColors(midCol, brightCol, (lum - 0.5) * 2);
+          }
+          colors.push(c.r, c.g, c.b);
+        }
+      }
+
+      // 1. Top Modulated Lithophane Surface
+      for (let iy = 0; iy < gridN; iy++) {
+        const y0 = -half + (iy / gridN) * S;
+        const y1 = -half + ((iy + 1) / gridN) * S;
+        for (let ix = 0; ix < gridN; ix++) {
+          const x0 = -half + (ix / gridN) * S;
+          const x1 = -half + ((ix + 1) / gridN) * S;
+
+          const i00 = iy * (gridN + 1) + ix;
+          const i10 = iy * (gridN + 1) + (ix + 1);
+          const i01 = (iy + 1) * (gridN + 1) + ix;
+          const i11 = (iy + 1) * (gridN + 1) + (ix + 1);
+
+          pushVertex(x0, y0, zGrid[i00], brightnessGrid[i00]);
+          pushVertex(x1, y0, zGrid[i10], brightnessGrid[i10]);
+          pushVertex(x1, y1, zGrid[i11], brightnessGrid[i11]);
+
+          pushVertex(x0, y0, zGrid[i00], brightnessGrid[i00]);
+          pushVertex(x1, y1, zGrid[i11], brightnessGrid[i11]);
+          pushVertex(x0, y1, zGrid[i01], brightnessGrid[i01]);
+        }
+      }
+
+      // 2. Flat Back Face of Lithophane at Z = zBaseOffset
+      const backShade = state.lithoBacklight ? housingCol : null;
+      pushVertex(-half, -half, zBaseOffset, 0.1, backShade);
+      pushVertex( half,  half, zBaseOffset, 0.1, backShade);
+      pushVertex( half, -half, zBaseOffset, 0.1, backShade);
+
+      pushVertex(-half, -half, zBaseOffset, 0.1, backShade);
+      pushVertex(-half,  half, zBaseOffset, 0.1, backShade);
+      pushVertex( half,  half, zBaseOffset, 0.1, backShade);
+
+      // 3. Four Perimeter Side Walls connecting Z = zBaseOffset to top edge zGrid
+      for (let i = 0; i < gridN; i++) {
+        const t0 = -half + (i / gridN) * S;
+        const t1 = -half + ((i + 1) / gridN) * S;
+
+        const zB0 = zGrid[i];
+        const zB1 = zGrid[i + 1];
+        pushVertex(t0, -half, zBaseOffset, 0.1);
+        pushVertex(t1, -half, zBaseOffset, 0.1);
+        pushVertex(t1, -half, zB1, 0.1);
+        pushVertex(t0, -half, zBaseOffset, 0.1);
+        pushVertex(t1, -half, zB1, 0.1);
+        pushVertex(t0, -half, zB0, 0.1);
+
+        const topRow = gridN * (gridN + 1);
+        const zT0 = zGrid[topRow + i];
+        const zT1 = zGrid[topRow + i + 1];
+        pushVertex(t1, half, zBaseOffset, 0.1);
+        pushVertex(t0, half, zBaseOffset, 0.1);
+        pushVertex(t0, half, zT0, 0.1);
+        pushVertex(t1, half, zBaseOffset, 0.1);
+        pushVertex(t0, half, zT0, 0.1);
+        pushVertex(t1, half, zT1, 0.1);
+
+        const zL0 = zGrid[i * (gridN + 1)];
+        const zL1 = zGrid[(i + 1) * (gridN + 1)];
+        pushVertex(-half, t1, zBaseOffset, 0.1);
+        pushVertex(-half, t0, zBaseOffset, 0.1);
+        pushVertex(-half, t0, zL0, 0.1);
+        pushVertex(-half, t1, zBaseOffset, 0.1);
+        pushVertex(-half, t0, zL0, 0.1);
+        pushVertex(-half, t1, zL1, 0.1);
+
+        const zR0 = zGrid[i * (gridN + 1) + gridN];
+        const zR1 = zGrid[(i + 1) * (gridN + 1) + gridN];
+        pushVertex(half, t0, zBaseOffset, 0.1);
+        pushVertex(half, t1, zBaseOffset, 0.1);
+        pushVertex(half, t1, zR1, 0.1);
+        pushVertex(half, t0, zBaseOffset, 0.1);
+        pushVertex(half, t1, zR1, 0.1);
+        pushVertex(half, t0, zR0, 0.1);
+      }
+
+      const mainLithoGeo = new THREE.BufferGeometry();
+      mainLithoGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      mainLithoGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      mainLithoGeo.computeVertexNormals();
+
+      const extraParts = [mainLithoGeo];
+      const boxColor = state.lithoBacklight ? housingCol : unlitCol;
+
+      function addColoredBox(w, h, d, cx, cy, cz) {
+        const box = new THREE.BoxGeometry(w, h, d);
+        box.translate(cx, cy, cz);
+        const normBox = normalizeForMerge(box);
+        const vCount = normBox.attributes.position.count;
+        const vCols = new Float32Array(vCount * 3);
+        for (let k = 0; k < vCount; k++) {
+          vCols[k * 3] = boxColor.r;
+          vCols[k * 3 + 1] = boxColor.g;
+          vCols[k * 3 + 2] = boxColor.b;
+        }
+        normBox.setAttribute('color', new THREE.BufferAttribute(vCols, 3));
+        extraParts.push(normBox);
+      }
+
+      // 4. Cost-Effective Minimalist LED Holder Frame (Z = 0 to zBaseOffset)
+      // Uses thin 1.4mm L-corner stand-offs + a single rear LED mounting crossbar (~75% less filament)
+      if (state.lithoLightbox && zBaseOffset > 2) {
+        const wallT = 1.4; // 3 clean perimeters with 0.4mm nozzle (zero infill needed)
+        const legLen = Math.min(22, S * 0.16);
+        const barW = Math.max(8, state.cableSlotWidth);
+        const barT = 1.6;
+
+        // 4 Minimalist Corner L-Legs (leaves all 4 sides open for airflow, wire routing & minimal filament)
+        const corners = [
+          [-1, -1], [1, -1], [-1, 1], [1, 1]
+        ];
+        corners.forEach(([sx, sy]) => {
+          // Vertical leg segment along X edge
+          addColoredBox(
+            wallT, legLen, zBaseOffset,
+            sx * (half - wallT / 2),
+            sy * (half - legLen / 2),
+            zBaseOffset / 2
+          );
+          // Horizontal leg segment along Y edge
+          addColoredBox(
+            legLen - wallT, wallT, zBaseOffset,
+            sx * (half - wallT - (legLen - wallT) / 2),
+            sy * (half - wallT / 2),
+            zBaseOffset / 2
+          );
+        });
+
+        // Two slim horizontal tie-rails connecting left/right corners at the back (Z = 0 to barT)
+        const railW = 4.0;
+        addColoredBox(S - wallT * 2, railW, barT, 0, -half + railW / 2, barT / 2);
+        addColoredBox(S - wallT * 2, railW, barT, 0,  half - railW / 2, barT / 2);
+
+        // Single Central Vertical LED Strip / Puck Mounting Crossbar (with a 4.5mm nail keyhole at top)
+        addColoredBox(barW, S - railW * 2, barT, 0, 0, barT / 2);
+      }
+
+      // 5. Optional Top Hanging Loop Hook
+      if (state.hookType === 'top-eyelet') {
+        const outerR = state.hookOuterDia / 2;
+        const holeR = Math.min(state.hookHoleDia / 2, outerR - 1.8);
+        const loopCenterY = half + outerR * 0.55;
+
+        const loopShape = new THREE.Shape();
+        loopShape.absarc(0, loopCenterY, outerR, 0, Math.PI * 2, false);
+        const neckW = outerR * 1.45;
+        loopShape.moveTo(-neckW / 2, half - 1.5);
+        loopShape.lineTo(neckW / 2, half - 1.5);
+        loopShape.lineTo(neckW / 2, loopCenterY);
+        loopShape.lineTo(-neckW / 2, loopCenterY);
+        loopShape.closePath();
+
+        const holePath = new THREE.Path();
+        holePath.absarc(0, loopCenterY, holeR, 0, Math.PI * 2, true);
+        loopShape.holes.push(holePath);
+
+        const hookH = Math.min(maxT, Math.max(2.0, maxT * 0.85));
+        const hookGeo = new THREE.ExtrudeGeometry(loopShape, {
+          depth: hookH,
+          bevelEnabled: false,
+          curveSegments: 36
+        });
+        if (zBaseOffset > 0) {
+          hookGeo.translate(0, 0, zBaseOffset);
+        }
+        const normHook = normalizeForMerge(hookGeo);
+        const hookVertCount = normHook.attributes.position.count;
+        const hookColors = new Float32Array(hookVertCount * 3);
+        const hc = state.lithoBacklight ? darkCol : unlitCol;
+        for (let k = 0; k < hookVertCount; k++) {
+          hookColors[k * 3] = hc.r;
+          hookColors[k * 3 + 1] = hc.g;
+          hookColors[k * 3 + 2] = hc.b;
+        }
+        normHook.setAttribute('color', new THREE.BufferAttribute(hookColors, 3));
+        extraParts.push(normHook);
+      }
+
+      if (extraParts.length === 1) return mainLithoGeo;
+      const merged = mergeGeometries(extraParts, false);
+      if (merged) {
+        merged.computeVertexNormals();
+        return merged;
+      }
+      return mainLithoGeo;
+    }
+
+    /**
+     * Builds a visual-only 3D model of the attached LED light sample (5V COB Strip + USB cable
+     * or Stick-On Puck / Tealight) inside the rear holder so the user can inspect fit & appearance.
+     */
+    function updateLedSamplePreview() {
+      while (ledPreviewGroup.children.length > 0) {
+        const child = ledPreviewGroup.children[0];
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+        ledPreviewGroup.remove(child);
+      }
+
+      const showSample = state.printMode === 'lithophane' && state.lithoLightbox && state.ledSampleType !== 'none';
+      internalLedLight.visible = state.printMode === 'lithophane' && state.lithoBacklight;
+
+      if (internalLedLight.visible) {
+        internalLedLight.position.set(0, 0, Math.max(4, state.lightboxDepth * 0.45));
+        internalLedLight.intensity = state.ledSampleType === 'puck' ? 280 : 420;
+      } else {
+        internalLedLight.intensity = 0;
+      }
+
+      if (!showSample) return;
+
+      const S = state.plaqueSize;
+      const half = S / 2;
+      const barT = 1.6;
+      const isLit = state.lithoBacklight;
+
+      const stripMat = new THREE.MeshStandardMaterial({
+        color: isLit ? 0xffe49e : 0xd6d3cb,
+        emissive: isLit ? 0xffae2b : 0x000000,
+        emissiveIntensity: isLit ? 2.4 : 0,
+        roughness: 0.3
+      });
+
+      const pcbMat = new THREE.MeshStandardMaterial({
+        color: 0xf4f4f5,
+        roughness: 0.5
+      });
+
+      const wireMat = new THREE.MeshStandardMaterial({
+        color: 0x1e2229,
+        roughness: 0.65
+      });
+
+      if (state.ledSampleType === 'cob-strip') {
+        const stripLen = S - 16;
+        const stripW = 8;
+
+        // White flexible PCB tape mounted on the inner face of the rear crossbar
+        const pcbGeo = new THREE.BoxGeometry(stripW, stripLen, 0.4);
+        const pcbMesh = new THREE.Mesh(pcbGeo, pcbMat);
+        pcbMesh.position.set(0, 0, barT + 0.2);
+        ledPreviewGroup.add(pcbMesh);
+
+        // Glowing yellow phosphor COB emitter line
+        const cobGeo = new THREE.BoxGeometry(stripW * 0.65, stripLen - 4, 0.5);
+        const cobMesh = new THREE.Mesh(cobGeo, stripMat);
+        cobMesh.position.set(0, 0, barT + 0.6);
+        ledPreviewGroup.add(cobMesh);
+
+        // Solder pads & USB power cord exiting cleanly out the bottom open frame
+        const plugGeo = new THREE.BoxGeometry(9, 10, 4.5);
+        const plugMesh = new THREE.Mesh(plugGeo, wireMat);
+        plugMesh.position.set(0, -half + 6, barT + 2.5);
+        ledPreviewGroup.add(plugMesh);
+
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, -half + 2, barT + 2.5),
+          new THREE.Vector3(0, -half - 16, barT + 2.0),
+          new THREE.Vector3(14, -half - 34, 1.6)
+        ]);
+        const cordGeo = new THREE.TubeGeometry(curve, 24, 1.6, 10, false);
+        const cordMesh = new THREE.Mesh(cordGeo, wireMat);
+        ledPreviewGroup.add(cordMesh);
+      } else if (state.ledSampleType === 'puck') {
+        const puckRadius = Math.min(32, S * 0.24);
+        const puckHeight = Math.min(18, Math.max(10, state.lightboxDepth - 2));
+
+        // Puck body mounted onto the inner face of the rear crossbar
+        const bodyGeo = new THREE.CylinderGeometry(puckRadius, puckRadius * 0.96, puckHeight, 40);
+        bodyGeo.rotateX(Math.PI / 2);
+        const bodyMesh = new THREE.Mesh(bodyGeo, pcbMat);
+        bodyMesh.position.set(0, 0, barT + puckHeight / 2);
+        ledPreviewGroup.add(bodyMesh);
+
+        // Glowing front lens facing the back of the lithophane
+        const lensGeo = new THREE.CylinderGeometry(puckRadius * 0.82, puckRadius * 0.82, 0.8, 36);
+        lensGeo.rotateX(Math.PI / 2);
+        const lensMesh = new THREE.Mesh(lensGeo, stripMat);
+        lensMesh.position.set(0, 0, barT + puckHeight + 0.3);
+        ledPreviewGroup.add(lensMesh);
+      }
+    }
+
+    function rebuildModel() {
+      while (modelGroup.children.length > 0) {
+        const child = modelGroup.children[0];
+        if (child.geometry) child.geometry.dispose();
+        modelGroup.remove(child);
+      }
+
+      if (state.printMode === 'lithophane') {
+        currentBaseGeo = buildLithophaneGeometry();
+        currentReliefGeo = null;
+
+        if (currentBaseGeo) {
+          const lithoMesh = new THREE.Mesh(currentBaseGeo, lithoMaterial);
+          lithoMesh.castShadow = true;
+          lithoMesh.receiveShadow = true;
+          modelGroup.add(lithoMesh);
+        }
+      } else {
+        currentBaseGeo = buildBasePlateGeometry();
+        currentReliefGeo = buildYantraReliefGeometry();
+
+        baseMaterial.color.set(state.baseColor);
+        reliefMaterial.color.set(state.reliefColor);
+
+        if (currentBaseGeo) {
+          const baseMesh = new THREE.Mesh(currentBaseGeo, baseMaterial);
+          baseMesh.castShadow = true;
+          baseMesh.receiveShadow = true;
+          modelGroup.add(baseMesh);
+        }
+
+        if (currentReliefGeo) {
+          const reliefMesh = new THREE.Mesh(currentReliefGeo, reliefMaterial);
+          reliefMesh.castShadow = true;
+          reliefMesh.receiveShadow = true;
+          modelGroup.add(reliefMesh);
+        }
+      }
+
+      updateLedSamplePreview();
+      updateTelemetryAndSlicer();
+    }
+
+    let rebuildTimer = null;
+    function scheduleRebuild(immediate = false) {
+      const badge = document.getElementById('generatingBadge');
+      if (badge) badge.classList.remove('hidden');
+
+      if (rebuildTimer) clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(() => {
+        requestAnimationFrame(() => {
+          try {
+            rebuildModel();
+          } finally {
+            if (badge) badge.classList.add('hidden');
+          }
+        });
+      }, immediate ? 10 : 75);
+    }
+
+    function buildLightboxBackplateGeometry() {
+      const barW = Math.max(8, state.cableSlotWidth);
+      const clipGeo = new THREE.BoxGeometry(barW + 4, 24, 2.0);
+      clipGeo.translate(0, 0, 1.0);
+      return clipGeo;
+    }
+
+    function updateTelemetryAndSlicer() {
+      const isLitho = state.printMode === 'lithophane';
+      const activeLayerHeight = isLitho ? 0.12 : state.layerHeight;
+      const totalH = isLitho
+        ? +((state.lithoLightbox ? state.lightboxDepth : 0) + state.lithoMaxThick).toFixed(2)
+        : +(state.baseThickness + state.reliefHeight).toFixed(2);
+      const baseLayers = Math.round(state.baseThickness / activeLayerHeight);
+      const totalLayers = Math.max(1, Math.round(totalH / activeLayerHeight));
+      const swapLayer = baseLayers + 1;
+      const swapZ = +(baseLayers * activeLayerHeight + activeLayerHeight).toFixed(2);
+
+      document.getElementById('slicerSwapLayer').textContent = `Layer ${swapLayer}`;
+      document.getElementById('slicerSwapLayerInline').textContent = `Layer ${swapLayer}`;
+      document.getElementById('slicerSwapZ').textContent = `${swapZ.toFixed(2)} mm`;
+      document.getElementById('slicerBaseLayers').textContent = `${baseLayers}`;
+      document.getElementById('slicerBaseMm').textContent = `${state.baseThickness.toFixed(1)} mm`;
+
+      document.getElementById('slicerLayerHeightVal').textContent = isLitho
+        ? '0.12 mm / 0.16 mm'
+        : '0.20 mm / 0.20 mm';
+      document.getElementById('slicerInfillVal').textContent = isLitho
+        ? '100% Rectilinear (or 99 Walls)'
+        : '15% Gyroid / Grid';
+      document.getElementById('slicerIroningVal').textContent = isLitho
+        ? 'Off (Preserves Heightmap)'
+        : 'Top Surfaces (25 mm/s, 10%)';
+
+      document.getElementById('statTotalHeight').textContent = `${totalH.toFixed(2)} mm`;
+
+      let triCount = 0;
+      if (currentBaseGeo) triCount += currentBaseGeo.attributes.position.count / 3;
+      if (currentReliefGeo) triCount += currentReliefGeo.attributes.position.count / 3;
+      document.getElementById('statTriangles').textContent = Math.round(triCount).toLocaleString();
+
+      const avgLithoThick = (state.lithoMinThick + state.lithoMaxThick) * 0.5;
+      // Minimalist 4-corner L-legs + slim rear LED crossbar (~75% lighter than a full box)
+      const legLen = Math.min(22, state.plaqueSize * 0.16);
+      const lightboxWallVol = (isLitho && state.lithoLightbox)
+        ? (8 * legLen * 1.4 * state.lightboxDepth + state.plaqueSize * (state.cableSlotWidth + 8) * 1.6)
+        : 0;
+      const volMm3 = isLitho
+        ? (state.plaqueSize * state.plaqueSize * avgLithoThick + lightboxWallVol)
+        : state.plaqueSize * state.plaqueSize * (state.baseThickness * 0.42 + state.reliefHeight * 0.25);
+      const grams = Math.max(8, Math.round((volMm3 / 1000) * 1.24));
+      document.getElementById('statWeight').textContent = `~${grams} g`;
+
+      const slider = document.getElementById('layerSlider');
+      const wasAtMax = parseInt(slider.value, 10) >= parseInt(slider.max, 10);
+      slider.max = totalLayers;
+      if (wasAtMax || state.inspectLayer > totalLayers) {
+        state.inspectLayer = totalLayers;
+        slider.value = totalLayers;
+      }
+      updateLayerInspectorVisuals();
+    }
+
+    function updateLayerInspectorVisuals() {
+      const isLitho = state.printMode === 'lithophane';
+      const activeLayerHeight = isLitho ? 0.12 : state.layerHeight;
+      const totalH = isLitho
+        ? +((state.lithoLightbox ? state.lightboxDepth : 0) + state.lithoMaxThick).toFixed(2)
+        : +(state.baseThickness + state.reliefHeight).toFixed(2);
+      const baseLayers = Math.round(state.baseThickness / activeLayerHeight);
+      const swapLayer = baseLayers + 1;
+      const totalLayers = Math.max(1, Math.round(totalH / activeLayerHeight));
+      const curLayer = Math.min(state.inspectLayer, totalLayers);
+      const clipZ = curLayer >= totalLayers ? totalH + 5 : +(curLayer * activeLayerHeight).toFixed(2);
+
+      zClipPlane.constant = clipZ;
+      document.getElementById('inspectorZ').textContent = `${Math.min(clipZ, totalH).toFixed(2)} mm`;
+
+      const badge = document.getElementById('layerStatusBadge');
+      if (isLitho) {
+        badge.textContent = `Lithophane Slice (Layer ${curLayer} / ${totalLayers} @ 0.12mm)`;
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+      } else if (curLayer === swapLayer) {
+        badge.textContent = `PAUSE & SWAP FILAMENT (Layer ${curLayer} / ${totalLayers})`;
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/50';
+      } else if (curLayer < swapLayer) {
+        badge.textContent = `Color 1: Base Plate (Layer ${curLayer} / ${totalLayers})`;
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-gray-700/60 text-gray-200 border border-gray-600';
+      } else {
+        badge.textContent = `Color 2: Raised Yantra (Layer ${curLayer} / ${totalLayers})`;
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-gold-500/20 text-gold-400 border border-gold-500/30';
+      }
+    }
+
+    // =========================================================================
+    // 6. BINARY STL EXPORTER
+    // =========================================================================
+    const exporter = new STLExporter();
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastBanner');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0');
+      setTimeout(() => toast.classList.add('opacity-0'), 2400);
+    }
+
+    function downloadBinarySTL(geometries, filename) {
+      const validGeos = geometries.filter(Boolean).map(normalizeForMerge);
+      if (validGeos.length === 0) return;
+
+      const merged = validGeos.length === 1 ? validGeos[0] : mergeGeometries(validGeos, false);
+      const tempMesh = new THREE.Mesh(merged);
+      const stlDataView = exporter.parse(tempMesh, { binary: true });
+
+      const blob = new Blob([stlDataView], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast(`Exported ${filename}`);
+    }
+
+    document.getElementById('btnDownloadBase').addEventListener('click', () => {
+      if (state.printMode === 'lithophane' && state.lithoLightbox) {
+        const backplateGeo = buildLightboxBackplateGeometry();
+        downloadBinarySTL([backplateGeo], `Saravanabhava_Yantra_${state.plaqueSize}mm_LED_BackCover.stl`);
+        return;
+      }
+      downloadBinarySTL([currentBaseGeo], `Saravanabhava_Yantra_${state.plaqueSize}mm_Base.stl`);
+    });
+
+    document.getElementById('btnDownloadRelief').addEventListener('click', () => {
+      downloadBinarySTL([currentReliefGeo], `Saravanabhava_Yantra_${state.plaqueSize}mm_Relief.stl`);
+    });
+
+    document.getElementById('btnDownloadCombined').addEventListener('click', () => {
+      const suffix = state.printMode === 'lithophane'
+        ? (state.lithoLightbox ? 'Lithophane_Lightbox' : 'Lithophane')
+        : 'Combined';
+      downloadBinarySTL(
+        [currentBaseGeo, currentReliefGeo],
+        `Saravanabhava_Yantra_${state.plaqueSize}mm_${suffix}.stl`
+      );
+    });
+
+    // =========================================================================
+    // 7. UI EVENT BINDINGS
+    // =========================================================================
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode-btn').forEach(b => {
+          b.classList.remove('active', 'border-gold-500/70', 'bg-workbench-800', 'text-gold-400');
+          b.classList.add('border-workbench-700', 'bg-workbench-800/50', 'text-gray-300');
+        });
+        btn.classList.add('active', 'border-gold-500/70', 'bg-workbench-800', 'text-gold-400');
+        btn.classList.remove('border-workbench-700', 'bg-workbench-800/50', 'text-gray-300');
+
+        state.printMode = btn.dataset.mode;
+        const isLitho = state.printMode === 'lithophane';
+
+        document.getElementById('modeBadge').textContent = isLitho ? '1-Color Lithophane' : '2-Color Z-Swap';
+        document.getElementById('modeDescription').textContent = isLitho
+          ? 'Modulates wall thickness (0.8–3.2 mm) so warm LED backlighting illuminates the sacred Yantra.'
+          : 'Extrudes crisp flat-topped stars & Tamil letters for a mid-print filament color change.';
+
+        document.getElementById('colorPresetsCard').classList.toggle('hidden', isLitho);
+        document.getElementById('lithoControlsCard').classList.toggle('hidden', !isLitho);
+        document.getElementById('reliefDimControls').classList.toggle('hidden', isLitho);
+
+        document.getElementById('slicerSwapCard').classList.toggle('hidden', isLitho);
+        document.getElementById('slicerLithoCard').classList.toggle('hidden', !isLitho);
+        document.getElementById('btnJumpSwap').classList.toggle('hidden', isLitho);
+
+        const showBackCoverBtn = isLitho && state.lithoLightbox;
+        document.getElementById('btnDownloadBase').classList.toggle('hidden', isLitho && !showBackCoverBtn);
+        document.getElementById('btnDownloadBase').lastChild.textContent = showBackCoverBtn
+          ? ' Spare LED Clip STL'
+          : ' Base STL';
+        document.getElementById('btnDownloadRelief').classList.toggle('hidden', isLitho);
+        document.getElementById('btnDownloadCombined').lastChild.textContent = isLitho
+          ? (state.lithoLightbox ? ' Download Lithophane + LED Holder STL' : ' Download Lithophane STL')
+          : ' Download Combined STL';
+
+        const keyholeBtn = document.querySelector('.hook-btn[data-hook="keyhole"]');
+        keyholeBtn.disabled = isLitho;
+        keyholeBtn.classList.toggle('opacity-40', isLitho);
+        keyholeBtn.classList.toggle('cursor-not-allowed', isLitho);
+        if (isLitho && state.hookType === 'keyhole') {
+          document.querySelector('.hook-btn[data-hook="top-eyelet"]').click();
+          return;
+        }
+
+        scheduleRebuild(true);
+      });
+    });
+
+    function bindSlider(id, stateKey, labelId, suffix, parser = parseFloat, divisor = 1) {
+      const el = document.getElementById(id);
+      const lbl = document.getElementById(labelId);
+      el.addEventListener('input', () => {
+        const val = parser(el.value);
+        state[stateKey] = val / divisor;
+        lbl.textContent = `${val}${suffix}`;
+        scheduleRebuild();
+      });
+    }
+
+    bindSlider('lithoMinThick', 'lithoMinThick', 'valLithoMinThick', ' mm', parseFloat);
+    bindSlider('lithoMaxThick', 'lithoMaxThick', 'valLithoMaxThick', ' mm', parseFloat);
+    bindSlider('lightboxDepth', 'lightboxDepth', 'valLightboxDepth', ' mm', parseInt);
+    bindSlider('cableSlotWidth', 'cableSlotWidth', 'valCableSlotWidth', ' mm', parseInt);
+
+    document.getElementById('lithoInvert').addEventListener('change', (e) => {
+      state.lithoInvert = e.target.checked;
+      scheduleRebuild();
+    });
+
+    document.getElementById('lithoBacklight').addEventListener('change', (e) => {
+      state.lithoBacklight = e.target.checked;
+      scheduleRebuild();
+    });
+
+    document.querySelectorAll('.led-sample-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.led-sample-btn').forEach(b => {
+          b.classList.remove('active', 'border-amber-500/70', 'bg-workbench-800', 'text-amber-300');
+          b.classList.add('border-workbench-700', 'bg-workbench-800/50', 'text-gray-300');
+        });
+        btn.classList.add('active', 'border-amber-500/70', 'bg-workbench-800', 'text-amber-300');
+        btn.classList.remove('border-workbench-700', 'bg-workbench-800/50', 'text-gray-300');
+
+        state.ledSampleType = btn.dataset.led;
+        if (state.ledSampleType === 'puck' && state.lightboxDepth < 20) {
+          state.lightboxDepth = 22;
+          document.getElementById('lightboxDepth').value = 22;
+          document.getElementById('valLightboxDepth').textContent = '22 mm';
+        }
+        scheduleRebuild();
+      });
+    });
+
+    document.getElementById('lithoLightbox').addEventListener('change', (e) => {
+      state.lithoLightbox = e.target.checked;
+      document.getElementById('lightboxSubControls').classList.toggle('hidden', !state.lithoLightbox);
+      const showBackCoverBtn = state.printMode === 'lithophane' && state.lithoLightbox;
+      document.getElementById('btnDownloadBase').classList.toggle('hidden', !showBackCoverBtn);
+      document.getElementById('btnDownloadBase').lastChild.textContent = ' Spare LED Clip STL';
+      document.getElementById('btnDownloadCombined').lastChild.textContent = state.lithoLightbox
+        ? ' Download Lithophane + LED Holder STL'
+        : ' Download Lithophane STL';
+      scheduleRebuild();
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.remove('active', 'bg-workbench-800', 'text-gold-400', 'shadow-sm');
+          b.classList.add('text-gray-400');
+        });
+        btn.classList.add('active', 'bg-workbench-800', 'text-gold-400', 'shadow-sm');
+        btn.classList.remove('text-gray-400');
+
+        const target = btn.dataset.tab;
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+        document.getElementById(`tab-${target}`).classList.remove('hidden');
+      });
+    });
+
+    const presets = {
+      'marble-gold': { base: '#f2efe9', relief: '#e5b53b' },
+      'black-gold': { base: '#1f2328', relief: '#f5c451' },
+      'maroon-cream': { base: '#6b1d26', relief: '#f7ebd2' }
+    };
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.preset-btn').forEach(b => {
+          b.classList.remove('border-gold-500/60', 'bg-workbench-800');
+          b.classList.add('border-workbench-700', 'bg-workbench-800/50');
+        });
+        btn.classList.add('border-gold-500/60', 'bg-workbench-800');
+        btn.classList.remove('border-workbench-700', 'bg-workbench-800/50');
+
+        const p = presets[btn.dataset.preset];
+        state.baseColor = p.base;
+        state.reliefColor = p.relief;
+        baseMaterial.color.set(p.base);
+        reliefMaterial.color.set(p.relief);
+      });
+    });
+
+    bindSlider('plaqueSize', 'plaqueSize', 'valPlaqueSize', ' mm', parseInt);
+    bindSlider('baseThickness', 'baseThickness', 'valBaseThickness', ' mm', parseFloat);
+    bindSlider('reliefHeight', 'reliefHeight', 'valReliefHeight', ' mm', parseFloat);
+    bindSlider('bevelWidth', 'bevelWidth', 'valBevelWidth', ' mm', parseFloat);
+    bindSlider('hookOuterDia', 'hookOuterDia', 'valHookOuterDia', ' mm', parseInt);
+    bindSlider('hookHoleDia', 'hookHoleDia', 'valHookHoleDia', ' mm', parseFloat);
+    bindSlider('starStroke', 'starStroke', 'valStarStroke', ' mm', parseFloat);
+    bindSlider('yantraScale', 'yantraScale', 'valYantraScale', '%', parseInt, 100);
+    bindSlider('fontScale', 'fontScale', 'valFontScale', '%', parseInt, 100);
+
+    document.querySelectorAll('.hook-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.hook-btn').forEach(b => {
+          b.classList.remove('active', 'border-gold-500/70', 'bg-workbench-800', 'text-gold-400');
+          b.classList.add('border-workbench-700', 'bg-workbench-800/50', 'text-gray-300');
+        });
+        btn.classList.add('active', 'border-gold-500/70', 'bg-workbench-800', 'text-gold-400');
+        btn.classList.remove('border-workbench-700', 'bg-workbench-800/50', 'text-gray-300');
+
+        state.hookType = btn.dataset.hook;
+        document.getElementById('hookEyeletControls').classList.toggle('hidden', state.hookType !== 'top-eyelet');
+        document.getElementById('hookKeyholeInfo').classList.toggle('hidden', state.hookType !== 'keyhole');
+        scheduleRebuild();
+      });
+    });
+
+    document.getElementById('outerBorderRing').addEventListener('change', (e) => {
+      state.outerBorderRing = e.target.checked;
+      scheduleRebuild();
+    });
+
+    document.getElementById('centerText').addEventListener('input', (e) => {
+      state.centerText = e.target.value;
+      scheduleRebuild();
+    });
+
+    document.querySelectorAll('.quick-center').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.centerText = btn.dataset.center;
+        document.getElementById('centerText').value = state.centerText;
+        scheduleRebuild();
+      });
+    });
+
+    for (let i = 0; i < 6; i++) {
+      document.getElementById(`char${i}`).addEventListener('input', (e) => {
+        state.outerChars[i] = e.target.value;
+        scheduleRebuild();
+      });
+    }
+
+    document.getElementById('tamilFontFamily').addEventListener('change', (e) => {
+      state.fontFamily = e.target.value;
+      scheduleRebuild();
+    });
+
+    document.getElementById('btnResetTamil').addEventListener('click', () => {
+      state.centerText = 'ஓம்';
+      state.outerChars = ['ச', 'ர', 'வ', 'ண', 'ப', 'வ'];
+      document.getElementById('centerText').value = state.centerText;
+      state.outerChars.forEach((ch, idx) => {
+        document.getElementById(`char${idx}`).value = ch;
+      });
+      scheduleRebuild();
+    });
+
+    document.getElementById('layerSlider').addEventListener('input', (e) => {
+      state.inspectLayer = parseInt(e.target.value, 10);
+      updateLayerInspectorVisuals();
+    });
+
+    document.getElementById('btnJumpSwap').addEventListener('click', () => {
+      const baseLayers = Math.round(state.baseThickness / state.layerHeight);
+      const swapLayer = baseLayers + 1;
+      state.inspectLayer = swapLayer;
+      document.getElementById('layerSlider').value = swapLayer;
+      updateLayerInspectorVisuals();
+    });
+
+    document.getElementById('btnCopyGcode').addEventListener('click', () => {
+      const tempInput = document.createElement('textarea');
+      tempInput.value = 'PAUSE';
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast('Copied "PAUSE" G-code command');
+    });
+
+    document.getElementById('camIso').addEventListener('click', () => {
+      camera.position.set(0, -145, 165);
+      controls.target.set(0, 0, 2);
+    });
+
+    document.getElementById('camTop').addEventListener('click', () => {
+      camera.position.set(0, -0.01, 210);
+      controls.target.set(0, 0, 0);
+    });
+
+    document.getElementById('camBack').addEventListener('click', () => {
+      camera.position.set(0, 75, -175);
+      controls.target.set(0, 0, 2);
+    });
+
+    let userShowBed = true;
+    document.getElementById('toggleBed').addEventListener('change', (e) => {
+      userShowBed = e.target.checked;
+      buildPlateGroup.visible = userShowBed && camera.position.z >= -1;
+    });
+
+    // =========================================================================
+    // 8. RESPONSIVE RESIZE & ANIMATION LOOP
+    // =========================================================================
+    function handleResize() {
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      camera.aspect = rect.width / rect.height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(rect.width, rect.height, false);
+    }
+
+    window.addEventListener('resize', handleResize);
+    new ResizeObserver(handleResize).observe(container);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      buildPlateGroup.visible = userShowBed && camera.position.z >= -1;
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('load', async () => {
+      handleResize();
+      try {
+        await document.fonts.ready;
+      } catch (e) {
+        // Fallback if FontFaceSet not supported
+      }
+      rebuildModel();
+      animate();
+    });
+  </script>
+</body>
+</html>
